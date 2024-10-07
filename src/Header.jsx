@@ -2,9 +2,20 @@ import React, { Component } from 'react';
 import HeaderLogo from "./header-logo";
 import accessibilityIcon from './assets/accessibilityIcon.png';
 import axios from 'axios';
+import Cookies from 'js-cookie';
 
 class Header extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      darkLanguages: [],
+      languages: []
+    };
+  }
+
   componentDidMount() {
+    var darkLang = []
+    var current_lang = Cookies.get('lang', { domain: process.env.SITE_DOMAIN, path: '/', secure: false, sameSite: "Lax" })
     const jf = document.createElement('script');
     jf.src = process.env.LMS_BASE_URL + '/static/js/toolkitjs/vebarl.js';
     jf.type = 'text/javascript';
@@ -20,7 +31,7 @@ class Header extends Component {
     const localizeInnerText = document.createElement("script");
     localizeInnerText.innerText = !function (a) { if (!a.Localize) { a.Localize = {}; for (var e = ["translate", "untranslate", "phrase", "initialize", "translatePage", "setLanguage", "getLanguage", "getSourceLanguage", "detectLanguage", "getAvailableLanguages", "untranslatePage", "bootstrap", "prefetch", "on", "off", "hideWidget", "showWidget"], t = 0; t < e.length; t++)a.Localize[e[t]] = function () { } } }(window);
     const localizeKey = document.createElement("script");
-    localizeKey.innerText = Localize.initialize({key: 'zKxxnKn5hZxwu',rememberLanguage: true,});
+    localizeKey.innerText = Localize.initialize({ key: 'zKxxnKn5hZxwu', rememberLanguage: true, });
     const langSelect = document.createElement("select");
     langSelect.id = "langOptions";
     langSelect.className = "myLang";
@@ -31,29 +42,30 @@ class Header extends Component {
     parentDiv.append(localizeKey);
     parentDiv.append(langSelect);
     const bodyDiv = document.body;
-    bodyDiv.append(localizeScript)
+    bodyDiv.append(localizeScript);
+    langSelect.addEventListener('click', this.handleLangOptionsClick);
     let selectTag = document.getElementById("langOptions");
+    const lang_dict = []
     Localize.getAvailableLanguages((error, data) => {
       data.map((e, i) => {
-      var lang_name = e.name;
-      if (e.code == "hi-IN" || e.code == "hi") {
-        lang_name = e.name + "(Hindi)";
-      } else if (e.code == "kn") {
-        lang_name = e.name + "(Kannada)";
-      } else if (e.code == "bn") {
-        lang_name = e.name + "(Bangali)"
-      } 
-      else if (e.code == "en") {
-        lang_name = e.name + "(English)"
-      } else if (e.code == "ta-IN") {
-        lang_name = e.name + "(Tamil (India))"
-      } else if (e.code == "or") {
-        lang_name = e.name + "(Odia)"
-      } else if (e.code == "ml-IN" || e.code == "ml") {
-        lang_name = e.name + "(Malayalam)"
-      }
-      var newOption = new Option(lang_name, e.code)
-      selectTag.append(newOption)
+        var lang_name = e.name;
+        if (e.code == "hi-IN" || e.code == "hi") {
+          lang_name = e.name + "(Hindi)";
+        } else if (e.code == "kn") {
+          lang_name = e.name + "(Kannada)";
+        } else if (e.code == "bn") {
+          lang_name = e.name + "(Bangali)"
+        }
+        else if (e.code == "en") {
+          lang_name = e.name + "(English)"
+        } else if (e.code == "ta-IN") {
+          lang_name = e.name + "(Tamil (India))"
+        } else if (e.code == "or") {
+          lang_name = e.name + "(Odia)"
+        } else if (e.code == "ml-IN" || e.code == "ml") {
+          lang_name = e.name + "(Malayalam)"
+        }
+        lang_dict.push({ "name": e.name, "code": e.code })
       })
     });
     axios.get(process.env.LMS_BASE_URL + '/mx-user-info/get_user_profile').then((res) => {
@@ -76,18 +88,76 @@ class Header extends Component {
           } else if (code == "ml-IN" || code == "ml") {
             name = name + "(Malayalam)"
           }
-          var option = new Option(name, code)
-          selectTag.append(option)
+
+          darkLang.push(code)
+          lang_dict.push({ "name": name, "code": code })
+        }
+      }
+      this.setState({ languages: lang_dict })
+      this.state.languages.map((lang, i) => {
+        var option = new Option(lang.name, lang.code)
+        selectTag.append(option)
+      })
+      const options = selectTag.options
+      for (let i = 0; i < options.length; i++) {
+        if (current_lang == options[i].value) {
+          options[i].setAttribute("selected", true)
+        }
+        else{
+          options[i].removeAttribute("selected", true)
         }
       }
     })
+    this.setState({ darkLanguages: darkLang })
+    $('#langOptions > option').each(function () {
+      if (current_lang == $(this).val()) {
+        $(this).attr('selected', true);
+      } else {
+        $(this).removeAttr("selected");
+      }
+    })
+  }
+
+  handleLangOptionsClick = (e) => {
+    let current_url = window.location.href;
+    let flag = true;
+    var setLang = e.target.value
+    localStorage.setItem("langButtonClicked", true);
+    localStorage.setItem("lang", e.target.value)
+    Cookies.set('lang', setLang, { domain: process.env.SITE_DOMAIN, path: '/', secure: false, sameSite: "Lax" })
+
+    var all_darkLangs_dict = this.state.darkLanguages;
+    if (all_darkLangs_dict.includes(setLang) && setLang != 'en') {
+      if (current_url.includes('/explore-courses/explore-programs') || current_url.includes('/explore-courses/explore-topics/') || current_url.includes('/courses/course-'))
+
+        window.location.href = window.location.origin + '/explore-courses/#main';
+      else
+        window.location.reload()
+
+    }
+
+    if ((!(all_darkLangs_dict.includes(setLang)) || setLang == 'en')) {
+      window.location.reload()
+    }
+
+    Localize.setLanguage(setLang);
+    $('#langOptions > option').each(function () {
+      if (setLang == $(this).val()) {
+        $(this).attr('selected', true);
+      } else {
+        $(this).removeAttr("selected");
+      }
+    })
+
+    setTimeout(() => {
+      Localize.untranslate($(".myLang").get(0));
+    }, 100);
 
   }
-  
+
   render() {
-  
     return (<>
-      <div className="uai userway_dark"  id="userwayAccessibilityIcon" aria-label="accessibility menu" role="button" tabIndex={1} >
+      <div className="uai userway_dark" id="userwayAccessibilityIcon" aria-label="accessibility menu" role="button" tabIndex={1} >
         <img alt="Accessibility Widget" src={accessibilityIcon} className="ui_w" width="35" height="35" />
       </div>
       <header className="global-header" id="nett-head">
