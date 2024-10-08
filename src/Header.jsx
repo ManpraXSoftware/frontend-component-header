@@ -17,10 +17,10 @@ class Header extends Component {
     var darkLang = []
     var current_lang = Cookies.get('lang', { domain: process.env.SITE_DOMAIN, path: '/', secure: false, sameSite: "Lax" })
     const jf = document.createElement('script');
-    jf.src = process.env.LMS_BASE_URL + '/static/js/toolkitjs/vebarl.js';
+    jf.src = `${process.env.LMS_BASE_URL}/static/js/toolkitjs/vebarl.js`;
     jf.type = 'text/javascript';
-    jf.id = 'external_js'
-    jf.setAttribute("lms_base_url", process.env.LMS_BASE_URL)
+    jf.id = 'external_js';
+    jf.setAttribute("lms_base_url", process.env.LMS_BASE_URL+'/')
     const parentDiv = document.getElementById('nett-head');
     const localizeScript = document.createElement('script');
     localizeScript.src = "https://global.localizecdn.com/localize.js";
