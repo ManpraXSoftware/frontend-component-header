@@ -179,7 +179,7 @@ class Header extends Component {
                         aria-current="page">Explore Courses</a>
                     </li>
                     <li className="nav-item">
-                      <a className={window.location.href.includes('dashboard/programs/') ? 'active tab-nav-link' : 'tab-nav-link'} href={process.env.LMS_BASE_URL + 'dashboard/programs/'} accessKey="s"
+                      <a className={window.location.href.includes('dashboard/programs/') ? 'active tab-nav-link' : 'tab-nav-link'} href={process.env.LMS_BASE_URL + '/dashboard/programs/'} accessKey="s"
                         aria-current="page">
                         Dashboard
                       </a>
