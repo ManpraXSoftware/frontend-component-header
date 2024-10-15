@@ -9,7 +9,8 @@ class Header extends Component {
     super(props);
     this.state = {
       darkLanguages: [],
-      languages: []
+      languages: [],
+      lang_key:''
     };
   }
 
@@ -46,29 +47,17 @@ class Header extends Component {
     langSelect.addEventListener('click', this.handleLangOptionsClick);
     let selectTag = document.getElementById("langOptions");
     const lang_dict = []
-    Localize.getAvailableLanguages((error, data) => {
-      data.map((e, i) => {
-        var lang_name = e.name;
-        if (e.code == "hi-IN" || e.code == "hi") {
-          lang_name = e.name + "(Hindi)";
-        } else if (e.code == "kn") {
-          lang_name = e.name + "(Kannada)";
-        } else if (e.code == "bn") {
-          lang_name = e.name + "(Bangali)"
-        }
-        else if (e.code == "en") {
-          lang_name = e.name + "(English)"
-        } else if (e.code == "ta-IN") {
-          lang_name = e.name + "(Tamil (India))"
-        } else if (e.code == "or") {
-          lang_name = e.name + "(Odia)"
-        } else if (e.code == "ml-IN" || e.code == "ml") {
-          lang_name = e.name + "(Malayalam)"
-        }
-        lang_dict.push({ "name": e.name, "code": e.code })
-      })
-    });
-    axios.get(process.env.LMS_BASE_URL + '/mx-user-info/get_user_profile').then((res) => {
+    axios.get(process.env.LMS_BASE_URL + `/mx-user-info/get_user_profile?email=${Cookies.get("email")}`,).then((res) => {
+      document.getElementById("header-username").innerText = res.data.username;
+      document.getElementById("profileimageid").src = process.env.LMS_BASE_URL + res.data.profileImage.medium;
+      document.getElementById("user-profiler-redirect").href = process.env.PROFILE_BASE_URL + res.data.username;
+      const dashboardDiv = document.getElementById('dashboard-navbar');
+      if (dashboardDiv && res.data.resume_block) {
+          const newDiv = document.createElement('div');
+          newDiv.className = 'mobile-nav-item dropdown-item dropdown-nav-item';
+          newDiv.innerHTML = `<a href=${res.data.resume_block} role="menuitem">Resume your last course</a>`;
+          dashboardDiv.parentNode.insertBefore(newDiv, dashboardDiv);
+      };
       for (let i = 0; i < res.data.dark_languages.length; i++) {
         var code = res.data.dark_languages[i][0]
         var name = res.data.dark_languages[i][1]
@@ -108,6 +97,29 @@ class Header extends Component {
         }
       }
     })
+    Localize.getAvailableLanguages((error, data) => {
+      data.map((e, i) => {
+        var lang_name = e.name;
+        if (e.code == "hi-IN" || e.code == "hi") {
+          lang_name = e.name + "(Hindi)";
+        } else if (e.code == "kn") {
+          lang_name = e.name + "(Kannada)";
+        } else if (e.code == "bn") {
+          lang_name = e.name + "(Bangali)"
+        }
+        else if (e.code == "en") {
+          lang_name = e.name + "(English)"
+        } else if (e.code == "ta-IN") {
+          lang_name = e.name + "(Tamil (India))"
+        } else if (e.code == "or") {
+          lang_name = e.name + "(Odia)"
+        } else if (e.code == "ml-IN" || e.code == "ml") {
+          lang_name = e.name + "(Malayalam)"
+        }
+        lang_dict.push({ "name": e.name, "code": e.code })
+      })
+    });
+    
     this.setState({ darkLanguages: darkLang })
     $('#langOptions > option').each(function () {
       if (current_lang == $(this).val()) {
@@ -211,8 +223,8 @@ class Header extends Component {
                 <div className="dropdown-user-menu hidden" aria-label="More Options" role="menu" id="user-menu" tabIndex={-1}>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item" id="dashboard-navbar"><a href={process.env.LMS_BASE_URL + 'dashboard/programs/'} role="menuitem">Dashboard</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item" ><a id="user-profiler-redirect" href="" role="menuitem">Profile</a></div>
-                  <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={process.env.LMS_BASE_URL + 'account/settings'} role="menuitem">Account</a></div>
-                  <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={process.env.LMS_BASE_URL + 'logout'} role="menuitem">Sign Out</a></div>
+                  <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={process.env.LMS_BASE_URL + '/account/settings'} role="menuitem">Account</a></div>
+                  <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={process.env.LMS_BASE_URL + '/logout'} role="menuitem">Sign Out</a></div>
                 </div>
               </div>
             </div>
