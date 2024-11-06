@@ -6,6 +6,11 @@
   "publishConfig": {
     "access": "public"
   },
+
+  "files": [
+    "src"
+    
+],
   "scripts": {
     "build": "make build",
     "i18n_extract": "fedx-scripts formatjs extract",
