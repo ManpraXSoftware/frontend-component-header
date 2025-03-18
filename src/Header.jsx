@@ -493,8 +493,7 @@ class Header extends Component {
       {/* <div className="uai userway_dark" id="userwayAccessibilityIcon" aria-label="accessibility menu" role="button" tabIndex={1} >
         <img alt="Accessibility Widget" src={accessibilityIcon} className="ui_w" width="35" height="35" />
       </div> */}
-      <a className="stmc" href="#mx-main">Skip to main content</a>
-
+      <a className="stmc" href={window.location.href.includes('/learning/course/') ? '#mx-main' : '#main'}>Skip to main content</a>
       <header className="global-header" id="nett-head">
         <div className="main-header">
            <HeaderLogo /> 
