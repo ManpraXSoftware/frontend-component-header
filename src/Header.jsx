@@ -31,8 +31,8 @@ class Header extends Component {
       const loginUrl = getConfig().LOGIN_URL;
       window.location.href = loginUrl; 
       return; // Stop further execution
-  }
-  console.log("site domain", getConfig().SITE_DOMAIN,getConfig().EXPLORE_COURSE_URL )
+    }
+  // console.log("site domain", getConfig().SITE_DOMAIN,getConfig().EXPLORE_COURSE_URL )
 
     const search_query = new URLSearchParams(location.search).get("text");
     this.setState({ setText: search_query || '' }); // Fallback to an empty string
@@ -42,16 +42,11 @@ class Header extends Component {
     }
     const jf = document.createElement('script');
 
-    // const mx_localizekey = getConfig().MX_LOCALIZEKEY[0];
 
 
   const mx_localizekey = Array.isArray(getConfig().MX_LOCALIZEKEY) 
   ? getConfig().MX_LOCALIZEKEY[0] 
   : getConfig().MX_LOCALIZEKEY;
-
-  // console.log("localizer key", mx_localizekey)
-
-
 
 
     const show_user_way = getConfig().SHOW_USER_WAY[0];
@@ -193,6 +188,20 @@ class Header extends Component {
         }
       })
 
+
+      // Add #main in iframe URL 
+
+    // const iframe = document.getElementById('unit-iframe');
+    // const iframeSrc = iframe?.getAttribute('src');
+
+    // if (iframe && iframeSrc) {
+    //   const parentUrlHash = window.location.hash;
+
+    //   if (parentUrlHash === '#main' && !iframeSrc.includes('#main')) {
+    //     const updatedSrc = `${iframeSrc}#main`;
+    //     iframe.setAttribute('src', updatedSrc);
+    //   }
+    // }
       
     };
     
@@ -431,13 +440,61 @@ class Header extends Component {
 
   }
 
+  // componentWillUnmount() {
+  //   // Clean up event listener when the component is unmounted
+  //   const skipLink = document.querySelector('.stmc');
+  //   if (skipLink) {
+  //     skipLink.removeEventListener('click', this.handleSkipToMainContent);
+  //   }
+  // }
 
+
+
+  // handleSkipToMainContent = (e) => {
+  //   e.preventDefault();
+  
+  //   const iframe = document.getElementById('unit-iframe');
+  //   const iframeSrc = iframe?.getAttribute('src');
+  
+  //   if (iframe && iframeSrc) {
+  //     // Add #main to the iframe src if not already present
+  //     if (!iframeSrc.includes('#main')) {
+  //       const newIframeUrl = `${iframeSrc}#main`;
+  //       iframe.setAttribute('src', newIframeUrl);
+  //     }
+  
+  //     // Focus on iframe
+  //     iframe.scrollIntoView({ behavior: 'smooth' });
+  //     iframe.focus();
+  //   } else {
+  //     console.error("Iframe with ID 'unit-iframe' not found or missing 'src'.");
+  //   }
+  // };
+
+  // Automatically append #main to iframe src if parent URL includes it
+// document.addEventListener('DOMContentLoaded', () => {
+//   const iframe = document.getElementById('unit-iframe');
+//   const iframeSrc = iframe?.getAttribute('src');
+
+//   if (iframe && iframeSrc) {
+//     const parentUrlHash = window.location.hash;
+
+//     // Add #main to the iframe src if the parent URL contains #main
+//     if (parentUrlHash === '#main' && !iframeSrc.includes('#main')) {
+//       const updatedSrc = `${iframeSrc}#main`;
+//       iframe.setAttribute('src', updatedSrc);
+//     }
+//   }
+// });
+  
 
   render() {
     return (<>
       {/* <div className="uai userway_dark" id="userwayAccessibilityIcon" aria-label="accessibility menu" role="button" tabIndex={1} >
         <img alt="Accessibility Widget" src={accessibilityIcon} className="ui_w" width="35" height="35" />
       </div> */}
+      <a className="stmc" href="#mx-main">Skip to main content</a>
+
       <header className="global-header" id="nett-head">
         <div className="main-header">
            <HeaderLogo /> 
