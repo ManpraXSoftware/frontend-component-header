@@ -19,6 +19,8 @@ class Header extends Component {
       lang_key:'',
       setText: ''
     };
+
+    this.dropdownRef = React.createRef();
   }
 
   
@@ -32,6 +34,7 @@ class Header extends Component {
       window.location.href = loginUrl; 
       return; // Stop further execution
     }
+
   // console.log("site domain", getConfig().SITE_DOMAIN,getConfig().EXPLORE_COURSE_URL )
 
     const search_query = new URLSearchParams(location.search).get("text");
@@ -219,7 +222,6 @@ class Header extends Component {
     let current_url = window.location.href;
     if (current_url.includes('learning/course/') ) {
       $(".myLang").hide();
-
       //  LTS WAT Code START : DO NOT REMOVE or MODIFY 
       //  Create and append the LTS script
       // const ltsScript = document.createElement('script');
@@ -240,6 +242,43 @@ class Header extends Component {
 
     // }
 
+    // Add document click listener
+    document.addEventListener('click', this.handleClickOutside);
+    document.addEventListener('keydown', this.handleKeyDown);
+  }
+
+  componentWillUnmount() {
+    // Clean up the event listener
+    document.removeEventListener('click', this.handleClickOutside);
+    document.removeEventListener('keydown', this.handleKeyDown)
+  }
+
+
+  handleClickOutside = (event) => {
+    const userMenu = document.getElementById("user-menu");
+    const toggleButtons = document.querySelectorAll(".toggle-user-dropdown");
+    
+    // Check if click is outside the dropdown and it's currently open
+    if (userMenu && !userMenu.classList.contains("hidden") && 
+        !event.target.closest('.secondary') &&
+        !event.target.closest('#user-menu')) {
+      userMenu.classList.add("hidden");
+      toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", "false"));
+    }
+  }
+
+  handleKeyDown = (event) => {
+    const userMenu = document.getElementById("user-menu");
+    const toggleButtons = document.querySelectorAll(".toggle-user-dropdown");
+    
+    // Check if Escape key is pressed (key code 27)
+    if (event.key === 'Escape' && userMenu && !userMenu.classList.contains("hidden")) {
+      userMenu.classList.add("hidden");
+      toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", "false"));
+      // Optional: Return focus to the toggle button
+      const toggleButton = document.querySelector(".toggle-user-dropdown");
+      if (toggleButton) toggleButton.focus();
+    }
   }
 
 
@@ -400,18 +439,6 @@ class Header extends Component {
       }
 
 
-    // if (all_darkLangs_dict.includes(setLang) && setLang != 'en') {
-    //   if (current_url.includes('/explore-courses/explore-programs') || current_url.includes('/explore-courses/explore-topics/') || current_url.includes('/courses/course-'))
-
-    //     window.location.href = window.location.origin + '/explore-courses/#main';
-    //   else
-    //     window.location.reload()
-
-    // }
-
-    // if ((!(all_darkLangs_dict.includes(setLang)) || setLang == 'en')) {
-    //   window.location.reload()
-    // }
 
     Localize.setLanguage(setLang);
     $('#langOptions > option').each(function () {
@@ -440,53 +467,6 @@ class Header extends Component {
 
   }
 
-  // componentWillUnmount() {
-  //   // Clean up event listener when the component is unmounted
-  //   const skipLink = document.querySelector('.stmc');
-  //   if (skipLink) {
-  //     skipLink.removeEventListener('click', this.handleSkipToMainContent);
-  //   }
-  // }
-
-
-
-  // handleSkipToMainContent = (e) => {
-  //   e.preventDefault();
-  
-  //   const iframe = document.getElementById('unit-iframe');
-  //   const iframeSrc = iframe?.getAttribute('src');
-  
-  //   if (iframe && iframeSrc) {
-  //     // Add #main to the iframe src if not already present
-  //     if (!iframeSrc.includes('#main')) {
-  //       const newIframeUrl = `${iframeSrc}#main`;
-  //       iframe.setAttribute('src', newIframeUrl);
-  //     }
-  
-  //     // Focus on iframe
-  //     iframe.scrollIntoView({ behavior: 'smooth' });
-  //     iframe.focus();
-  //   } else {
-  //     console.error("Iframe with ID 'unit-iframe' not found or missing 'src'.");
-  //   }
-  // };
-
-  // Automatically append #main to iframe src if parent URL includes it
-// document.addEventListener('DOMContentLoaded', () => {
-//   const iframe = document.getElementById('unit-iframe');
-//   const iframeSrc = iframe?.getAttribute('src');
-
-//   if (iframe && iframeSrc) {
-//     const parentUrlHash = window.location.hash;
-
-//     // Add #main to the iframe src if the parent URL contains #main
-//     if (parentUrlHash === '#main' && !iframeSrc.includes('#main')) {
-//       const updatedSrc = `${iframeSrc}#main`;
-//       iframe.setAttribute('src', updatedSrc);
-//     }
-//   }
-// });
-  
 
   render() {
     return (<>
@@ -494,6 +474,7 @@ class Header extends Component {
         <img alt="Accessibility Widget" src={accessibilityIcon} className="ui_w" width="35" height="35" />
       </div> */}
       <a className="stmc" href={window.location.href.includes('/learning/course/') ? '#mx-main' : '#main'}>Skip to main content</a>
+
       <header className="global-header" id="nett-head">
         <div className="main-header">
            <HeaderLogo /> 
@@ -535,7 +516,20 @@ class Header extends Component {
                 </div>
               </nav>
             </div>
-            <div className="secondary" onClick={(e) => { document.getElementById("user-menu").classList.toggle("hidden") }}>
+            {/* <div className="secondary" onClick={(e) => { document.getElementById("user-menu").classList.toggle("hidden") }}> */}
+
+            <div 
+              className="secondary" 
+              onClick={(e) => { 
+                const userMenu = document.getElementById("user-menu");
+                const isHidden = userMenu.classList.contains("hidden");
+                userMenu.classList.toggle("hidden");
+                const toggleButtons = document.querySelectorAll(".toggle-user-dropdown");
+                toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", !isHidden));
+              }}
+            >
+
+  
               <div className="nav-item hidden-mobile user_custom_login toggle-user-dropdown" aria-label="User Account Options" aria-expanded="false" tabIndex={0} aria-controls="user-menu">
                 <span className="menu-title" aria-hidden="true">
                   <img className="user-image-frame" id="profileimageid" src="" alt="" />
