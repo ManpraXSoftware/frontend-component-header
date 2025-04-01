@@ -37,8 +37,13 @@ class Header extends Component {
 
   // console.log("site domain", getConfig().SITE_DOMAIN,getConfig().EXPLORE_COURSE_URL )
 
-    const search_query = new URLSearchParams(location.search).get("text");
-    this.setState({ setText: search_query || '' }); // Fallback to an empty string
+    // const search_query = new URLSearchParams(location.search).get("text");
+    // this.setState({ setText: search_query || '' }); // Fallback to an empty string
+    if (!this.state.setText) {
+      const search_query = new URLSearchParams(location.search).get("text");
+      this.setState({ setText: search_query || '' });
+    }
+    
     var current_lang = Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: "Lax" })
     if (!current_lang) { // Check for undefined, null, or empty string
       current_lang = 'en';
@@ -320,7 +325,6 @@ class Header extends Component {
 
 
     // Custom confirmation dialog
-    // Custom confirmation dialog
     showCustomConfirmDialog = (message, onConfirm, onCancel) => {
       // Create dialog elements
       const modal = document.createElement('div');
@@ -421,6 +425,28 @@ class Header extends Component {
           
       }
   });
+
+  //Start Close modal on ESC key press
+  modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+        document.body.removeChild(modal);
+        onCancel();
+        document.body.style.overflow = null;
+        for (var i = 0; i < nonModalNodes.length; i++) {
+            var node = nonModalNodes[i];
+            if (node._prevTabindex) {
+                node.setAttribute('tabindex', node._prevTabindex);
+                node._prevTabindex = null;
+            } else {
+                node.removeAttribute('tabindex');
+            }
+            node.style.outline = null;
+        }
+    }
+  });
+  //End Close modal on ESC key press
+
+
   };
 
   chngLang = (e) => {
