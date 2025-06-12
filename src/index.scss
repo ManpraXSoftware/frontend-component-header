@@ -12646,3 +12646,33 @@ body,
     font-size: 16px !important;;
     font-family: Segoe UI !important;
 }
+
+
+/* Ensure mobile menu is hidden by default */
+    .mobile-menu {
+        display: none;
+        position: absolute;
+        top: 100%; /* Position below header */
+        left: 0;
+        width: 100%;
+        background-color: #fff; /* Match desktop menu background */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1000; /* Ensure it appears above other elements */
+        flex-direction: column;
+        padding: 10px;
+        transition: transform 0.3s ease-in-out;
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+    /* Show mobile menu when not hidden */
+    .mobile-menu:not(.hidden) {
+        display: flex;
+        transform: translateY(0);
+        opacity: 1;
+        margin-left: -15px !important;
+    }
+
+
+#userwayAccessibilityIcon {
+    right: 0;
+}
