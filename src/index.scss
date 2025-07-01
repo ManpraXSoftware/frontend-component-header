@@ -12675,4 +12675,18 @@ body,
 
 #userwayAccessibilityIcon {
     right: 0;
+    overflow: hidden;
+}
+
+.uwy.userway_p1  {
+  position: relative !important;
+}
+.uwy .userway_buttons_wrapper {
+    position: absolute !important;
+   align-items: end;
+}
+
+body .uwy .ulsti{
+    position: relative !important;
+    top: 0px !important;
 }
