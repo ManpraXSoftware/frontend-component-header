@@ -729,9 +729,18 @@ class AudioSearch extends Component {
                       if (this.state.finalText || this.state.interimText) {
                         const searchText = this.state.finalText || this.state.interimText;
                         this.props.onTextUpdate(searchText);
-                        let url = this.props.exploreCourseUrl + `/search?text=${encodeURIComponent(searchText)}`;
-                        window.location = url;
-                        this.handleStopRecording();
+                        // let url = this.props.exploreCourseUrl + `/search?text=${encodeURIComponent(searchText)}`;
+                        // window.location = url;
+                        // this.handleStopRecording();
+                        if (this.props.exploreCourseUrl) {
+                          const url = `${this.props.exploreCourseUrl}/search?text=${encodeURIComponent(searchText)}`;
+                          console.log('Redirecting to:', url, { timestamp: new Date().toISOString() });
+                          window.location = url;
+                        } else {
+                          console.log('No redirection, closing modal', { timestamp: new Date().toISOString() });
+                          this.handleStopRecording();
+                        }
+                        
                       }
                     }}
                     className="btn"
@@ -748,7 +757,7 @@ class AudioSearch extends Component {
                   >
                     Respeak
                   </button>
-                  <button
+                  {/* <button
                     type="button"
                     onClick={this.handleStopRecording}
                     className="btn"
@@ -756,7 +765,7 @@ class AudioSearch extends Component {
                     aria-label="Stop recording"
                   >
                     <FontAwesomeIcon icon={faStop} /> Stop
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
