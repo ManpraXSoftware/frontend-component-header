@@ -619,6 +619,7 @@ class Header extends Component {
                             currentLang={Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: 'Lax' }) || 'en'}
                             onTextUpdate={(text) => this.setState({ setText: text })}
                             exploreCourseUrl={getConfig().EXPLORE_COURSE_URL[0]}
+                            searchLabel="mx-header"
                           />
 
                         <input type="submit" value="" className="submit" aria-label="Search" />
