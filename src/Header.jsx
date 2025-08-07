@@ -7,6 +7,7 @@ import { AppContext } from '@edx/frontend-platform/react';
 import { getConfig } from '@edx/frontend-platform';
 import CaretDropDownIcon from './Icons';
 import $ from 'jquery'; 
+import AudioSearch from './AudioSearch';
 
 class Header extends Component {
   static contextType = AppContext;
@@ -21,9 +22,11 @@ class Header extends Component {
       isMobileMenuOpen: false, 
       resumeCourseUrl: null,
       profileUrl: '',
+
     };
 
     this.dropdownRef = React.createRef();
+
   }
 
   
@@ -53,7 +56,6 @@ class Header extends Component {
       current_lang = 'en';
     }
     const jf = document.createElement('script');
-
 
 
   const mx_localizekey = Array.isArray(getConfig().MX_LOCALIZEKEY) 
@@ -264,13 +266,42 @@ class Header extends Component {
     // Add document click listener
     document.addEventListener('click', this.handleClickOutside);
     document.addEventListener('keydown', this.handleKeyDown);
+
+
+
+    // Cleanup for modal
+   // Add ESC key listener
+    // this.handleEscKey = (event) => {
+    //   if (event.key === 'Escape' && this.state.showModal && !this.isStoppingRef.current) {
+    //     event.stopPropagation();
+    //     event.preventDefault();
+    //     console.log('ESC key event triggered, showModal:', this.state.showModal);
+    //     this.handleStopRecording();
+    //   }
+    // };
+    // document.addEventListener('keydown', this.handleEscKey);
+
+
+    // document.addEventListener('keydown', this.handleEscKey, { capture: true });
+
+  }
+  componentWillUnmount() {
+    document.removeEventListener('click', this.handleClickOutside);
+    document.removeEventListener('keydown', this.handleKeyDown);
   }
 
-  componentWillUnmount() {
-    // Clean up the event listener
-    document.removeEventListener('click', this.handleClickOutside);
-    document.removeEventListener('keydown', this.handleKeyDown)
-  }
+
+
+  handleSearchClick = (e) => {
+    e.preventDefault();
+    let searchData = this.state.setText;
+    if (searchData !== '') {
+      let url = getConfig().EXPLORE_COURSE_URL[0] + `/search?text=${encodeURIComponent(searchData)}`;
+      window.location = url;
+      this.setState({ setText: '' });
+    }
+  };
+
 
   // method to toggle mobile menu
   toggleMobileMenu = () => {
@@ -581,9 +612,21 @@ class Header extends Component {
                           this.setState({ setText: e.target.value }); // Update state correctly
                         }}
                         name="Search for topic of interest" placeholder="Search for topic of interest" className="enter" />
+                       
+                      
+                        <AudioSearch
+                            // currentLang={this.current_lang}
+                            currentLang={Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: 'Lax' }) || 'en'}
+                            onTextUpdate={(text) => this.setState({ setText: text })}
+                            exploreCourseUrl={getConfig().EXPLORE_COURSE_URL[0]}
+                          />
+
                         <input type="submit" value="" className="submit" aria-label="Search" />
                         
                       </div>
+
+
+
                     </form>
                   </div>
                 </div>
@@ -601,7 +644,6 @@ class Header extends Component {
                 toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", !isHidden));
               }}
             >
-
   
               <div className="nav-item hidden-mobile user_custom_login toggle-user-dropdown" aria-label="User Account Options" aria-expanded="false" tabIndex={0} aria-controls="user-menu">
                 <span className="menu-title" aria-hidden="true">
