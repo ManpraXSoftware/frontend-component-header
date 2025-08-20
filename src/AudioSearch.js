@@ -70,7 +70,11 @@ class AudioSearch extends Component {
       event.stopPropagation();
       event.preventDefault();
       console.log('ESC key detected', { showModal: this.state.showModal, timestamp: new Date().toISOString() });
+      this.audioChunksRef.current = [];
+      this.isStartingRef.current = false;
+      this.isStoppingRef.current = false;
       this.handleStopRecording();
+
     }
   };
 
@@ -192,7 +196,7 @@ class AudioSearch extends Component {
     if (!SpeechRecognition || !this.recognitionRef.current) {
       this.setState({
         debugMessage: 'Speech recognition not supported in this browser.',
-        finalText: 'Speech recognition not supported. Please use a supported browser like Chrome.',
+        // finalText: 'Speech recognition not supported. Please use a supported browser like Chrome.',
         isListening: false,
         showModal: true,
         canRespeak: true,
@@ -205,7 +209,7 @@ class AudioSearch extends Component {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       this.setState({
         debugMessage: 'Microphone access not supported.',
-        finalText: 'Microphone access not supported. Please use a supported browser.',
+        // finalText: 'Microphone access not supported. Please use a supported browser.',
         isListening: false,
         showModal: true,
         canRespeak: true,
@@ -218,12 +222,12 @@ class AudioSearch extends Component {
     if (!window.isSecureContext) {
       this.setState({
         debugMessage: 'Microphone access requires a secure context (HTTPS or localhost).',
-        finalText: 'Microphone access requires HTTPS. Please access this site via a secure connection.',
+        // finalText: 'Microphone access requires HTTPS. Please access this site via a secure connection.',
         isListening: false,
         showModal: true,
         canRespeak: true,
       });
-      alert('Microphone access requires a secure context (HTTPS or localhost).');
+      alert('Microphone access requires a secure context (HTTPS).');
       this.isStartingRef.current = false;
       return;
     }
@@ -258,7 +262,7 @@ class AudioSearch extends Component {
         });
         this.setState({
           debugMessage: 'Invalid microphone stream for MediaRecorder',
-          finalText: 'Microphone stream failed to activate. Please check microphone permissions or try a different device.',
+          // finalText: 'Microphone stream failed to activate. Please check microphone permissions or try a different device.',
           isListening: false,
           showModal: true,
           canRespeak: true,
@@ -284,7 +288,7 @@ class AudioSearch extends Component {
           console.log('Skipping transcription: no audio chunks collected', { length: this.audioChunksRef.current.length, totalSize, timestamp: new Date().toISOString() });
           this.setState({
             debugMessage: 'No speech detected. Please speak clearly and try again.',
-            finalText: 'No speech detected. Please speak clearly and try again.',
+            // finalText: 'No speech detected. Please speak clearly and try again.',
             showModal: true,
             isListening: false,
             canRespeak: true,
@@ -308,7 +312,7 @@ class AudioSearch extends Component {
         formData.append('language', this.props.currentLang || 'en-US');
 
         try {
-          console.log('Attempting transcription API call', { url: `${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, timestamp: new Date().toISOString() });
+          // console.log('Attempting transcription API call', { url: `${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, timestamp: new Date().toISOString() });
           const response = await fetch(`${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, {
             method: 'POST',
             body: formData,
@@ -322,24 +326,24 @@ class AudioSearch extends Component {
           } else {
             console.error('Transcription API error:', { status: response.status, error: data.error || 'Unknown error', timestamp: new Date().toISOString() });
             this.setState({
-              finalText: 'Failed to transcribe audio: ' + (data.error || 'Unknown error'),
+              // finalText: 'Failed to transcribe audio: ' + (data.error || 'Unknown error'),
               debugMessage: 'Transcription error: ' + (data.error || 'Unknown error'),
               showModal: true,
               isListening: false,
               canRespeak: true,
             });
-            alert('Failed to transcribe audio: ' + (data.error || 'Unknown error'));
+            // alert('Failed to transcribe audio: ' + (data.error || 'Unknown error'));
           }
         } catch (error) {
           console.error('Transcription fetch error:', { error: error.message, timestamp: new Date().toISOString() });
           this.setState({
-            finalText: 'Error processing audio: ' + error.message,
+            // finalText: 'Error processing audio: ' + error.message,
             debugMessage: 'Fetch error: ' + error.message,
             showModal: true,
             isListening: false,
             canRespeak: true,
           });
-          alert('Error processing audio: ' + error.message);
+          // alert('Error processing audio: ' + error.message);
         }
 
         this.audioChunksRef.current = [];
@@ -391,10 +395,11 @@ class AudioSearch extends Component {
         }
         if (event.results[0].isFinal) {
           const finalTranscript = newBuffer.filter(t => t.isFinal).map(t => t.text).join(' ').trim();
-          this.setState({ finalText: finalTranscript, isListening: false, canRespeak: true, transcriptBuffer: [] });
+          // this.setState({ finalText: finalTranscript, isListening: false, canRespeak: true, transcriptBuffer: [] });
+          this.setState({  isListening: false,  transcriptBuffer: [] });
           // this.props.onTextUpdate(finalTranscript);
           if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-            console.log('Stopping MediaRecorder after final result', { timestamp: new Date().toISOString() });
+            // console.log('Stopping MediaRecorder after final result', { timestamp: new Date().toISOString() });
             this.mediaRecorder.current.stop();
           }
           if (this.interimTimeoutRef.current) {
@@ -406,9 +411,10 @@ class AudioSearch extends Component {
             this.interimTimeoutRef.current = setTimeout(() => {
               if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
                 const finalTranscript = this.state.transcriptBuffer.map(t => t.text).join(' ').trim();
-                console.log('Stopping MediaRecorder after prolonged interim results', { finalTranscript, timestamp: new Date().toISOString() });
+                // console.log('Stopping MediaRecorder after prolonged interim results', { finalTranscript, timestamp: new Date().toISOString() });
                 this.mediaRecorder.current.stop();
-                this.setState({ finalText: finalTranscript, debugMessage: 'Finalized interim text due to timeout', isListening: false, canRespeak: true, transcriptBuffer: [] });
+                // this.setState({ finalText: finalTranscript, debugMessage: 'Finalized interim text due to timeout', isListening: false, canRespeak: true, transcriptBuffer: [] });
+                this.setState({ debugMessage: 'Finalized interim text due to timeout', isListening: false, transcriptBuffer: [] });
                 // this.props.onTextUpdate(finalTranscript);
               }
               this.interimTimeoutRef.current = null;
@@ -421,17 +427,17 @@ class AudioSearch extends Component {
         console.log('Speech recognition error details:', { error: event.error, timestamp: new Date().toISOString() });
         this.setState({
           debugMessage: `Speech recognition error: ${event.error}`,
-          finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
+          // finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
           showModal: true,
           isListening: false,
           canRespeak: true,
         });
-        alert(`Speech recognition error: ${event.error}. Please check microphone permissions or try again.`);
+        // alert(`Speech recognition error: ${event.error}. Please check microphone permissions or try again.`);
         this.handleStopRecording();
       };
 
       this.recognitionRef.current.onend = () => {
-        console.log('Speech recognition ended', { isListening: this.state.isListening, isStopping: this.isStoppingRef.current, timestamp: new Date().toISOString() });
+        // console.log('Speech recognition ended', { isListening: this.state.isListening, isStopping: this.isStoppingRef.current, timestamp: new Date().toISOString() });
         this.setState({ debugMessage: 'Speech recognition ended' });
         if (this.state.isListening && !this.isStoppingRef.current) {
           setTimeout(() => {
@@ -448,7 +454,7 @@ class AudioSearch extends Component {
                 console.error('Error restarting recognition:', { error: error.message, timestamp: new Date().toISOString() });
                 this.setState({
                   debugMessage: `Error restarting recognition: ${error.message}`,
-                  finalText: `Error: ${error.message}`,
+                  // finalText: `Error: ${error.message}`,
                   showModal: true,
                   isListening: false,
                   canRespeak: true,
@@ -462,7 +468,7 @@ class AudioSearch extends Component {
         }
       };
 
-      console.log('Attempting to start SpeechRecognition', { streamActive: this.streamRef.current?.active, timestamp: new Date().toISOString() });
+      // console.log('Attempting to start SpeechRecognition', { streamActive: this.streamRef.current?.active, timestamp: new Date().toISOString() });
       if (!this.streamRef.current || !this.streamRef.current.active || this.streamRef.current.getAudioTracks().length === 0) {
         console.error('Microphone stream not ready for SpeechRecognition', {
           streamExists: !!this.streamRef.current,
@@ -472,7 +478,7 @@ class AudioSearch extends Component {
         });
         this.setState({
           debugMessage: 'Microphone stream not ready for SpeechRecognition',
-          finalText: 'Microphone stream failed to activate. Please check microphone permissions or try a different device.',
+          // finalText: 'Microphone stream failed to activate. Please check microphone permissions or try a different device.',
           isListening: false,
           showModal: true,
           canRespeak: true,
@@ -487,7 +493,7 @@ class AudioSearch extends Component {
         console.error('SpeechRecognition start failed', { timestamp: new Date().toISOString() });
         this.setState({
           debugMessage: 'SpeechRecognition start failed',
-          finalText: 'Failed to start speech recognition. Please check microphone permissions or try a different device.',
+          // finalText: 'Failed to start speech recognition. Please check microphone permissions or try a different device.',
           isListening: false,
           showModal: true,
           canRespeak: true,
@@ -501,7 +507,7 @@ class AudioSearch extends Component {
           console.log('No speech detected within 10 seconds', { timestamp: new Date().toISOString() });
           this.setState({ 
             debugMessage: 'No speech detected within 10 seconds', 
-            finalText: 'No speech detected. Please speak clearly and try again.', 
+            // finalText: 'No speech detected. Please speak clearly and try again.', 
             isListening: false, 
             showModal: true,
             canRespeak: true,
@@ -530,12 +536,12 @@ class AudioSearch extends Component {
       console.error('Unexpected error in handleAudioSearch:', { error: error.message, timestamp: new Date().toISOString() });
       this.setState({
         debugMessage: 'Unexpected error: ' + error.message,
-        finalText: 'Unexpected error: ' + error.message,
+        // finalText: 'Unexpected error: ' + error.message,
         isListening: false,
         showModal: true,
         canRespeak: true,
       });
-      alert('Unexpected error: ' + error.message);
+      // alert('Unexpected error: ' + error.message);
       this.stopAllTracks();
       this.isStartingRef.current = false;
       this.isStoppingRef.current = false;
@@ -549,7 +555,8 @@ class AudioSearch extends Component {
       return;
     }
 
-    this.isStoppingRef.current = true;
+    // this.isStoppingRef.current = true;
+    this.isStoppingRef.current = false;
     console.log('Stop recording initiated', { showModal: this.state.showModal, isListening: this.state.isListening, timestamp: new Date().toISOString() });
     this.setState({ debugMessage: 'Stop recording initiated', isListening: false, showModal: false });
 
@@ -622,7 +629,7 @@ class AudioSearch extends Component {
         this.recognitionRef.current.onerror = null;
         this.recognitionRef.current.onend = null;
         this.recognitionRef.current = null;
-        console.log('Speech recognition stopped and cleared for reset', { timestamp: new Date().toISOString() });
+        // console.log('Speech recognition stopped and cleared for reset', { timestamp: new Date().toISOString() });
         this.setState({ debugMessage: 'Speech recognition stopped and cleared for reset' });
       } catch (error) {
         console.error('Error stopping speech recognition for reset:', { error: error.message, timestamp: new Date().toISOString() });
@@ -633,14 +640,14 @@ class AudioSearch extends Component {
     if (this.mediaRecorder.current) {
       try {
         if (this.mediaRecorder.current.state !== 'inactive') {
-          console.log('MediaRecorder stop triggered for reset', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
+          // console.log('MediaRecorder stop triggered for reset', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
           this.mediaRecorder.current.stop();
           this.setState({ debugMessage: `MediaRecorder stop triggered for reset, state: ${this.mediaRecorder.current.state}` });
         }
         this.mediaRecorder.current.onstop = null;
         this.mediaRecorder.current.ondataavailable = null;
         this.mediaRecorder.current = null;
-        console.log('MediaRecorder fully cleared for reset', { timestamp: new Date().toISOString() });
+        // console.log('MediaRecorder fully cleared for reset', { timestamp: new Date().toISOString() });
         this.setState({ debugMessage: 'MediaRecorder fully cleared for reset' });
       } catch (error) {
         console.error('Error stopping MediaRecorder for reset:', { error: error.message, timestamp: new Date().toISOString() });
@@ -677,12 +684,12 @@ class AudioSearch extends Component {
   };
 
   render() {
-    console.log('AudioSearch render', { 
-      showModal: this.state.showModal, 
-      isListening: this.state.isListening, 
-      refs: { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current }, 
-      timestamp: new Date().toISOString(),
-    });
+    // console.log('AudioSearch render', { 
+    //   showModal: this.state.showModal, 
+    //   isListening: this.state.isListening, 
+    //   refs: { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current }, 
+    //   timestamp: new Date().toISOString(),
+    // });
     return (
       <>
         <button
@@ -690,6 +697,7 @@ class AudioSearch extends Component {
           onClick={() => this.handleAudioSearch(true)}
           className={`mic-btn border ${this.props.searchLabel} ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current ? 'bg-gray-300' : 'bg-white'} hover:bg-gray-100`}
           disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current}
+          // disabled={this.state.isListening}
           aria-label="Voice search"
         >
           <FontAwesomeIcon icon={faMicrophone} />
@@ -726,8 +734,8 @@ class AudioSearch extends Component {
                         transcriptBuffer: this.state.transcriptBuffer, 
                         timestamp: new Date().toISOString(),
                       });
-                      if (this.state.finalText || this.state.interimText) {
-                        const searchText = this.state.finalText || this.state.interimText;
+                      if (this.state.finalText) {
+                        const searchText = this.state.finalText;
                         this.props.onTextUpdate(searchText);
                         // let url = this.props.exploreCourseUrl + `/search?text=${encodeURIComponent(searchText)}`;
                         // window.location = url;
@@ -744,7 +752,8 @@ class AudioSearch extends Component {
                       }
                     }}
                     className="btn"
-                    disabled={!this.state.finalText && !this.state.interimText}
+                    // disabled={!this.state.finalText && !this.state.interimText}
+                    disabled={!this.state.finalText}
                     aria-label="Search with transcribed text"
                   >
                     Search
