@@ -606,7 +606,7 @@ class Header extends Component {
                   </ul>
                   <div className="search_box1">
                     <form className='headerSearchForm' onSubmit={this.handleSearchClick}>
-                      <div className="form-group" role='search'>
+                      <div className="form-group" id="headerSearchWrap" role='search'>
                         <input type="text" id="heardeSearch" value={this.state.setText} 
                         onChange={(e) => {
                           this.setState({ setText: e.target.value }); // Update state correctly

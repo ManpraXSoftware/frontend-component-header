@@ -13,6 +13,7 @@ class AudioSearch extends Component {
       finalText: '',
       debugMessage: '',
       canRespeak: false,
+      canSearch: false,
       transcriptBuffer: [],
     };
 
@@ -37,7 +38,27 @@ trapFocusInModal = (shouldTrap = true) => {
     if (shouldTrap && modal) {
       const modalNodes = Array.from(modal.querySelectorAll('*'));
       // Comprehensive selector for all focusable elements
-      const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"], area[href], details, summary, iframe, object, embed';
+      // const focusableSelector = 'a[href], [data-testid="breadcrumb-item"], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"], area[href], details, summary, iframe, object, embed';
+      const focusableSelector = `
+      a[href], 
+      button:not([disabled]), 
+      input:not([disabled]), 
+      select:not([disabled]), 
+      textarea:not([disabled]), 
+      [tabindex]:not([tabindex="-1"]), 
+      [contenteditable="true"], 
+      area[href], 
+      details, 
+      summary, 
+      iframe, 
+      object, 
+      embed, 
+      li[data-testid="breadcrumb-item"], 
+      li[data-testid="breadcrumb-item"] a, 
+      li[data-testid="breadcrumb-item"] button, 
+      li[data-testid="breadcrumb-item"] [tabindex]
+    `;
+      
       const nonModalNodes = Array.from(document.querySelectorAll(`body *:not(.voice-modal):not(.voice-modal *)`)).filter(node => node.matches(focusableSelector));
 
       this.nonModalNodes = [];
@@ -52,9 +73,23 @@ trapFocusInModal = (shouldTrap = true) => {
         }
       }
 
-      const firstFocusable = modal.querySelector('button.btn-close');
-      if (firstFocusable) {
-        firstFocusable.focus();
+      // const firstFocusable = modal.querySelector('button.btn-close');
+      const firstFocusable = document.getElementById('voiceText');
+     if (firstFocusable) {
+      firstFocusable.setAttribute('tabindex', '0'); // Make voiceText focusable
+      firstFocusable.focus();
+    }
+
+      const micButton = document.querySelector('button.mic-btn');
+        if (micButton && !(micButton.disabled)) {
+          micButton.disabled = true
+        }
+
+      const headerSearchWrap = document.getElementById('headerSearchWrap');
+      if (headerSearchWrap) {
+        // headerSearchWrap.style.outline = 'unset';
+        headerSearchWrap.classList.add('remove_focus');
+     
       }
 
       console.log('Focus trap applied for Voice Search modal', {
@@ -88,28 +123,65 @@ trapFocusInModal = (shouldTrap = true) => {
 
       // Focus the microphone button to ensure tab navigation resumes
       const micButton = document.querySelector('button.mic-btn');
-      if (micButton && !micButton.disabled) {
-        micButton.focus();
-        console.log('Focused microphone button after modal close', {
-          tag: micButton.tagName,
-          id: micButton.id,
-          class: micButton.className,
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        // Fallback to first focusable element on the page
-        const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"], [contenteditable="true"], area[href], summary';
-        const firstPageFocusable = document.querySelector(focusableSelector);
-        if (firstPageFocusable) {
-          firstPageFocusable.focus();
-          console.log('Focused first page element after modal close', {
-            tag: firstPageFocusable.tagName,
-            id: firstPageFocusable.id,
-            class: firstPageFocusable.className,
+        // if (micButton && !(micButton.disabled)) {
+        if (micButton ) {
+          if (micButton.disabled) {
+            micButton.disabled = false; // Enable the button
+            console.log('Microphone button enabled', {
+              tag: micButton.tagName,
+              class: micButton.className,
+              timestamp: new Date().toISOString(),
+            });
+          }
+
+            const headerSearchWrap = document.getElementById('headerSearchWrap');
+            if (headerSearchWrap) {
+              // headerSearchWrap.style.outline = '1px auto';
+              // headerSearchWrap.focus();
+              headerSearchWrap.classList.remove('remove_focus');
+            }
+
+          micButton.focus();
+          console.log('Focused microphone button after modal close', {
+            tag: micButton.tagName,
+            id: micButton.id,
+            class: micButton.className,
             timestamp: new Date().toISOString(),
           });
+        } else {
+          // Fallback to first focusable element on the page
+          // const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"], [contenteditable="true"], area[href], summary';
+          const focusableSelector = `
+          a[href], 
+          button:not([disabled]), 
+          input:not([disabled]), 
+          select:not([disabled]), 
+          textarea:not([disabled]), 
+          [tabindex]:not([tabindex="-1"]), 
+          [contenteditable="true"], 
+          area[href], 
+          details, 
+          summary, 
+          iframe, 
+          object, 
+          embed, 
+          li[data-testid="breadcrumb-item"], 
+          li[data-testid="breadcrumb-item"] a, 
+          li[data-testid="breadcrumb-item"] button, 
+          li[data-testid="breadcrumb-item"] [tabindex]
+        `;
+          
+          const firstPageFocusable = document.querySelector(focusableSelector);
+          if (firstPageFocusable) {
+            firstPageFocusable.focus();
+            console.log('Focused first page element after modal close', {
+              tag: firstPageFocusable.tagName,
+              id: firstPageFocusable.id,
+              class: firstPageFocusable.className,
+              timestamp: new Date().toISOString(),
+            });
+          }
         }
-      }
 
       this.nonModalNodes = [];
     }
@@ -119,6 +191,9 @@ trapFocusInModal = (shouldTrap = true) => {
     if (this.state.showModal && !prevState.showModal) {
       this.trapFocusInModal(true);
     }
+    else if (!this.state.showModal && prevState.showModal) {
+    this.trapFocusInModal(false);
+  }
   }
 
   componentDidMount() {
@@ -376,7 +451,7 @@ trapFocusInModal = (shouldTrap = true) => {
         console.log('MediaRecorder onstop triggered', { isStopping: this.isStoppingRef.current, chunks: this.audioChunksRef.current.length, timestamp: new Date().toISOString() });
         const totalSize = this.audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0) || 0;
 
-        if (this.audioChunksRef.current.length === 0) {
+        if (this.audioChunksRef.current.length === 0 || this.state.finalText === 'No speech detected. Please speak clearly or click Respeak to try again.') {
           console.log('Skipping transcription: no audio chunks collected', { length: this.audioChunksRef.current.length, totalSize, timestamp: new Date().toISOString() });
           this.setState({
             debugMessage: 'No speech detected. Please speak clearly and try again.',
@@ -384,6 +459,7 @@ trapFocusInModal = (shouldTrap = true) => {
             showModal: true,
             isListening: false,
             canRespeak: true,
+            canSearch: false,
           });
           this.audioChunksRef.current = [];
           this.stopAllTracks();
@@ -413,7 +489,7 @@ trapFocusInModal = (shouldTrap = true) => {
           console.log('Transcription API response:', { status: response.status, data, timestamp: new Date().toISOString() });
 
           if (response.ok && data.text) {
-            this.setState({ finalText: data.text, debugMessage: 'Transcription successful: ' + data.text, isListening: false, canRespeak: true });
+            this.setState({ finalText: data.text, canSearch:true, debugMessage: 'Transcription successful: ' + data.text, isListening: false, canRespeak: true });
             // this.props.onTextUpdate(data.text);
           } else {
             console.error('Transcription API error:', { status: response.status, error: data.error || 'Unknown error', timestamp: new Date().toISOString() });
@@ -515,21 +591,83 @@ trapFocusInModal = (shouldTrap = true) => {
         }
       };
 
-      this.recognitionRef.current.onerror = (event) => {
-        console.log('Speech recognition error details:', { error: event.error, timestamp: new Date().toISOString() });
-        this.setState({
-          debugMessage: `Speech recognition error: ${event.error}`,
-          // finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
-          showModal: true,
-          isListening: false,
-          canRespeak: true,
-        });
-        this.audioChunksRef.current = [];
-        this.isStartingRef.current = false;
-        this.isStoppingRef.current = false;
-        // alert(`Speech recognition error: ${event.error}. Please check microphone permissions or try again.`);
-        this.handleStopRecording();
-      };
+      // this.recognitionRef.current.onerror = (event) => {
+      //   console.log('Speech recognition error details:', { error: event.error, timestamp: new Date().toISOString() });
+      //   this.setState({
+      //     debugMessage: `Speech recognition error: ${event.error}`,
+      //     // finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
+      //     showModal: true,
+      //     isListening: false,
+      //     canRespeak: true,
+      //   });
+      //   this.audioChunksRef.current = [];
+      //   this.isStartingRef.current = false;
+      //   this.isStoppingRef.current = false;
+      //   // alert(`Speech recognition error: ${event.error}. Please check microphone permissions or try again.`);
+      //   this.handleStopRecording();
+      // };
+
+
+      // In the handleAudioSearch method, replace the existing recognitionRef.current.onerror block with:
+this.recognitionRef.current.onerror = (event) => {
+    console.log('Speech recognition error details:', { error: event.error, timestamp: new Date().toISOString() });
+    if (event.error === 'no-speech') {
+      this.setState({
+        debugMessage: 'No speech detected by recognition API',
+        finalText: 'No speech detected. Please speak clearly or click Respeak to try again.',
+        showModal: true, // Keep modal open
+        isListening: false,
+        canRespeak: true, // Enable Respeak button
+        canSearch: false, // Disable Search button
+      });
+      this.audioChunksRef.current = [];
+      this.isStartingRef.current = false;
+      this.isStoppingRef.current = false;
+      this.clearAllTimeouts(); // Clear all timeouts to prevent recordingTimeout
+      this.stopAllTracks(); // Stop media tracks
+
+      const micButton = document.querySelector('button.mic-btn');
+        // console.log("disable disable mice btn")
+
+        if (micButton && !micButton.disabled) {
+            micButton.disabled = true; // Enable the button
+            console.log("disable mice btn")
+        }
+
+
+
+      if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
+        this.mediaRecorder.current.stop();
+        this.setState({ debugMessage: 'MediaRecorder stopped due to no speech' });
+      }
+      if (this.recognitionRef.current) {
+        try {
+          this.recognitionRef.current.stop();
+          this.recognitionRef.current.onresult = null;
+          this.recognitionRef.current.onerror = null;
+          this.recognitionRef.current.onend = null;
+          this.recognitionRef.current = null;
+          this.setState({ debugMessage: 'Speech recognition stopped due to no speech' });
+        } catch (error) {
+          console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
+          this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
+        }
+      }
+    } else {
+      this.setState({
+        debugMessage: `Speech recognition error: ${event.error}`,
+        finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
+        showModal: true,
+        isListening: false,
+        canRespeak: true,
+        canSearch: false, // Disable Search button for other errors
+      });
+      this.audioChunksRef.current = [];
+      this.isStartingRef.current = false;
+      this.isStoppingRef.current = false;
+      this.handleStopRecording(); // Call handleStopRecording for other errors
+    }
+  };
 
       this.recognitionRef.current.onend = () => {
         // console.log('Speech recognition ended', { isListening: this.state.isListening, isStopping: this.isStoppingRef.current, timestamp: new Date().toISOString() });
@@ -597,23 +735,76 @@ trapFocusInModal = (shouldTrap = true) => {
         this.isStartingRef.current = false;
       }
 
+      // this.speechDetectionTimeoutRef.current = setTimeout(() => {
+      //   if (this.state.isListening && !this.isStoppingRef.current && !this.state.interimText && !this.state.finalText && this.state.transcriptBuffer.length === 0) {
+      //     console.log('No speech detected within 10 seconds', { timestamp: new Date().toISOString() });
+      //     this.setState({ 
+      //       debugMessage: 'No speech detected within 10 seconds', 
+      //       // finalText: 'No speech detected. Please speak clearly and try again.', 
+      //       isListening: false, 
+      //       showModal: true,
+      //       canRespeak: true,
+      //     });
+      //     this.audioChunksRef.current = [];
+      //     this.isStartingRef.current = false;
+      //     this.isStoppingRef.current = false; 
+      //     this.handleStopRecording();
+      //   }
+      // }, 10000);
+
       this.speechDetectionTimeoutRef.current = setTimeout(() => {
         if (this.state.isListening && !this.isStoppingRef.current && !this.state.interimText && !this.state.finalText && this.state.transcriptBuffer.length === 0) {
-          console.log('No speech detected within 10 seconds', { timestamp: new Date().toISOString() });
+          console.log('No speech detected within 10 seconds', { 
+            isStarting: this.isStartingRef.current, 
+            isStopping: this.isStoppingRef.current, 
+            isListening: this.state.isListening, 
+            showModal: this.state.showModal, 
+            canRespeak: this.state.canRespeak,
+            micButtonDisabled: this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current, 
+            timestamp: new Date().toISOString() 
+          });
           this.setState({ 
             debugMessage: 'No speech detected within 10 seconds', 
-            // finalText: 'No speech detected. Please speak clearly and try again.', 
+            finalText: 'No speech detected. Please speak clearly or click Respeak to try again.', 
             isListening: false, 
-            showModal: true,
-            canRespeak: true,
+            showModal: true, 
+            canRespeak: true, 
+            canSearch: false 
+          }, () => {
+            console.log('No speech detected state updated', { 
+              isStarting: this.isStartingRef.current, 
+              isStopping: this.isStoppingRef.current, 
+              isListening: this.state.isListening, 
+              showModal: this.state.showModal, 
+              canRespeak: this.state.canRespeak,
+              micButtonDisabled: this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current, 
+              timestamp: new Date().toISOString() 
+            });
           });
-          this.audioChunksRef.current = [];
-          this.isStartingRef.current = false;
-          this.isStoppingRef.current = false; 
-          this.handleStopRecording();
+          this.clearAllTimeouts();
+          this.stopAllTracks();
+          if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
+            this.mediaRecorder.current.stop();
+            this.setState({ debugMessage: 'MediaRecorder stopped due to no speech' });
+          }
+          if (this.recognitionRef.current) {
+            try {
+              this.recognitionRef.current.stop();
+              this.recognitionRef.current.onresult = null;
+              this.recognitionRef.current.onerror = null;
+              this.recognitionRef.current.onend = null;
+              this.recognitionRef.current = null;
+              this.setState({ debugMessage: 'Speech recognition stopped due to no speech' });
+            } catch (error) {
+              console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
+              this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
+            }
+          }
+          // Explicitly ensure isStartingRef.current remains true
+          this.isStartingRef.current = true; // Reinforce to prevent accidental reset
+          
         }
       }, 10000);
-
       this.recordingTimeoutRef.current = setTimeout(() => {
         if (this.state.isListening && !this.isStoppingRef.current) {
           console.log('Recording timeout triggered', { timestamp: new Date().toISOString() });
@@ -642,7 +833,8 @@ trapFocusInModal = (shouldTrap = true) => {
       // alert('Unexpected error: ' + error.message);
       this.stopAllTracks();
       this.isStartingRef.current = false;
-      this.isStoppingRef.current = false;
+      // this.isStoppingRef.current = false;
+      this.isStoppingRef.current = true;
     }
   };
 
@@ -708,7 +900,7 @@ trapFocusInModal = (shouldTrap = true) => {
     this.isStoppingRef.current = false;
 
      // Restore focusability for non-modal elements
-    this.trapFocusInModal(false);
+    // this.trapFocusInModal(false);
     console.log('Stop recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, showModal: this.state.showModal, timestamp: new Date().toISOString() });
   };
 
@@ -758,8 +950,9 @@ trapFocusInModal = (shouldTrap = true) => {
 
     this.audioChunksRef.current = [];
     this.setState({ interimText: '', finalText: '', isListening: false, showModal: true, canRespeak: true, transcriptBuffer: [] });
-    this.isStartingRef.current = false;
+    // this.isStartingRef.current = false;
     this.isStoppingRef.current = false;
+
 
    
     console.log('Reset recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, isListening: this.state.isListening, timestamp: new Date().toISOString() });
@@ -769,7 +962,7 @@ trapFocusInModal = (shouldTrap = true) => {
     event.preventDefault();
     event.stopPropagation();
     console.log('Respeak initiated', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, isListening: this.state.isListening, timestamp: new Date().toISOString() });
-    this.setState({ debugMessage: 'Respeak initiated', interimText: '', finalText: '', transcriptBuffer: [], isListening: false, canRespeak: false });
+    this.setState({ debugMessage: 'Respeak initiated', interimText: '', finalText: '', canSearch:false, transcriptBuffer: [], isListening: false, canRespeak: false });
     
     this.resetRecording();
     if (!this.isStoppingRef.current && !this.isStartingRef.current && !this.state.isListening) {
@@ -796,13 +989,16 @@ trapFocusInModal = (shouldTrap = true) => {
           onClick={() => this.handleAudioSearch(true)}
           className={`mic-btn border ${this.props.searchLabel} ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current ? 'bg-gray-300' : 'bg-white'} hover:bg-gray-100`}
           disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current}
+          // disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
+          // disabled={this.isStartingRef.current || this.isStoppingRef.current}
+          // !this.state.canRespeak
           aria-label="Voice search"
         >
           <FontAwesomeIcon icon={faMicrophone} />
         </button>
         {this.state.showModal && (
           <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
-            <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-dialog modal-dialog-centered modal-lg" role="dialog">
               <div className="mx-modal-content">
                 <div className="mx-modal-header">
                   <h5 className="mx-modal-title" id="voiceSearchModalLabel">
@@ -811,14 +1007,15 @@ trapFocusInModal = (shouldTrap = true) => {
                   <button
                     type="button"
                     className="btn-close"
+                    data-dismiss="modal"
                     onClick={this.handleStopRecording}
                     aria-label="Close"
                     disabled={this.isStoppingRef.current}
                   ></button>
                 </div>
                 <div className="modal-body">
-                  <p className="text-gray-700 mb-4 text-base">{this.state.finalText || this.state.interimText || 'Listening...'}</p>
-                  {process.env.NODE_ENV === 'development' && this.state.debugMessage && (
+                  <p className="text-gray-700 mb-4 text-base" id="voiceText" aria-label={this.state.finalText || this.state.interimText || 'Listening'}>{this.state.finalText || this.state.interimText || 'Listening...'}</p>
+                  {process.env.NODE_ENV === 'developments' && this.state.debugMessage && (
                     <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
                   )}
                 </div>
@@ -832,7 +1029,7 @@ trapFocusInModal = (shouldTrap = true) => {
                         transcriptBuffer: this.state.transcriptBuffer, 
                         timestamp: new Date().toISOString(),
                       });
-                      if (this.state.finalText) {
+                      if (this.state.finalText && this.state.canSearch) {
                         const searchText = this.state.finalText;
                         this.props.onTextUpdate(searchText);
                         // let url = this.props.exploreCourseUrl + `/search?text=${encodeURIComponent(searchText)}`;
@@ -850,7 +1047,8 @@ trapFocusInModal = (shouldTrap = true) => {
                       }
                     }}
                     className="btn"
-                    disabled={!this.state.finalText}
+                    // disabled={!this.state.finalText}
+                    disabled={!this.state.canSearch}
                     aria-label="Search with transcribed text"
                   >
                     Search

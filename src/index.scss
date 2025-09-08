@@ -1000,6 +1000,10 @@ li {
     outline: 1px auto;
 }
 
+.remove_focus {
+    outline: unset !important;
+}
+
 .nav-item-dropdown .toggle-user-dropdown svg{
     margin-bottom: 3px;
     margin-right: 7px;
@@ -12647,7 +12651,6 @@ body,
     font-family: Segoe UI !important;
 }
 
-
 /* Ensure mobile menu is hidden by default */
     .mobile-menu {
         display: none;
@@ -12673,6 +12676,16 @@ body,
     }
 
 
+
+// .uwy.userway_p1 {
+//     position: unset !important;                
+// }
+// .uwy .userway_buttons_wrapper {
+//     position: absolute !important;
+//     z-index: 2147483647 !important;
+// }
+
+
 #userwayAccessibilityIcon {
     right: 0;
     overflow: hidden;
@@ -12690,6 +12703,10 @@ body .uwy .ulsti{
     position: relative !important;
     top: 0px !important;
 }
+
+
+
+
 
 
 
@@ -12746,6 +12763,11 @@ body .uwy .ulsti{
 .mic-btn.mx-header {
     padding-bottom: 0;
 }
+
+.mic-btn.mx-header:focus {
+    outline: 1px auto;    
+}
+
 .stop-btn {
   background: #ef4444;
   color: white;
@@ -12877,6 +12899,7 @@ body .uwy .ulsti{
   gap: 0.5rem;
 }
 
+
 .voice-modal.show:focus {
     overflow: unset;
 }
@@ -12884,3 +12907,4 @@ body .uwy .ulsti{
 .voice-modal.show:focus .modal-dialog {
     box-shadow: none !important;
 }
+
