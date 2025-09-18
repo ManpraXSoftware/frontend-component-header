@@ -423,7 +423,7 @@ class AudioSearch extends Component {
         canRespeak: true,
         canSearch: false,
         transcriptBuffer: [],
-        modalMessage: 'Click Speak to start voice search.',
+        modalMessage: 'Click Speak to start speaking, then click Stop after you finish.',
         recordingStartTime: null,
       });
     };
@@ -884,11 +884,11 @@ class AudioSearch extends Component {
                   <div className="modal-body">
                     <p className="text-gray-700 mb-4 text-base" id="voiceText" 
                       tabindex="0"
-                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                       >
                         <span  aria-hidden="true">
                          {/* <span {...(this.state.finalText ? { 'aria-hidden': 'true' } : {})}> */}
-                      {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+                      {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
 
                         </span>
                     </p>
