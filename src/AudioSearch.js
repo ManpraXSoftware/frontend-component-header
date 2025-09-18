@@ -71,11 +71,11 @@ class AudioSearch extends Component {
         }
       }
 
-      // const firstFocusable = document.getElementById('voiceText');
-      // if (firstFocusable) {
-      //   firstFocusable.setAttribute('tabindex', '0');
-      //   firstFocusable.focus();
-      // }
+      const firstFocusable = document.getElementById('voiceText');
+      if (firstFocusable) {
+        // firstFocusable.setAttribute('tabindex', '0');
+        firstFocusable.focus();
+      }
 
       const micButton = document.querySelector('button.mic-btn');
       if (micButton && !micButton.disabled) {
@@ -269,7 +269,7 @@ class AudioSearch extends Component {
               const voiceText = document.getElementById('voiceText');
               if (voiceText) {
                 // voiceText.setAttribute('aria-live', 'polite');
-                voiceText.setAttribute('tabindex', '0');
+                // voiceText.setAttribute('tabindex', '0');
                       // role="status"
                 // voiceText.setAttribute('aria-live', 'assertive');
                 // voiceText.setAttribute('role', 'status');
@@ -880,13 +880,17 @@ class AudioSearch extends Component {
                       disabled={this.isStoppingRef.current}
                     ></button>
                   </div>
+
                   <div className="modal-body">
                     <p className="text-gray-700 mb-4 text-base" id="voiceText" 
-                      // tabindex="0"
-                      // role="status"
-                      // aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+                      tabindex="0"
+                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
                       >
+                        <span  aria-hidden="true">
+                         {/* <span {...(this.state.finalText ? { 'aria-hidden': 'true' } : {})}> */}
                       {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+
+                        </span>
                     </p>
                     {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
                       <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
