@@ -15,6 +15,8 @@ class AudioSearch extends Component {
       canRespeak: false,
       canSearch: false,
       transcriptBuffer: [],
+      modalMessage: '',
+      recordingStartTime: null,
     };
 
     this.mediaRecorder = React.createRef();
@@ -22,42 +24,39 @@ class AudioSearch extends Component {
     this.audioChunksRef = React.createRef();
     this.isStoppingRef = React.createRef();
     this.isStartingRef = React.createRef();
-    this.recognitionRef = React.createRef();
-    this.recordingTimeoutRef = React.createRef();
-    this.speechDetectionTimeoutRef = React.createRef();
-    this.interimTimeoutRef = React.createRef();
-
+    this.speechRecognition = React.createRef();
     this.audioChunksRef.current = [];
     this.isStoppingRef.current = false;
     this.isStartingRef.current = false;
-    this.nonModalNodes = []; // Store nodes for focus trap restoration
+    this.recordingTimeout = null;
+    this.nonModalNodes = [];
   }
 
-trapFocusInModal = (shouldTrap = true) => {
+  trapFocusInModal = (shouldTrap = true) => {
     const modal = document.querySelector('.voice-modal');
     if (shouldTrap && modal) {
       const modalNodes = Array.from(modal.querySelectorAll('*'));
-      // Comprehensive selector for all focusable elements
-      // const focusableSelector = 'a[href], [data-testid="breadcrumb-item"], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"], area[href], details, summary, iframe, object, embed';
       const focusableSelector = `
-      a[href], 
-      button:not([disabled]), 
-      input:not([disabled]), 
-      select:not([disabled]), 
-      textarea:not([disabled]), 
-      [tabindex]:not([tabindex="-1"]), 
-      [contenteditable="true"], 
-      area[href], 
-      details, 
-      summary, 
-      iframe, 
-      object, 
-      embed, 
-      li[data-testid="breadcrumb-item"], 
-      li[data-testid="breadcrumb-item"] a, 
-      li[data-testid="breadcrumb-item"] button, 
-      li[data-testid="breadcrumb-item"] [tabindex]
-    `;
+        a[href], 
+        button:not([disabled]), 
+        input:not([disabled]), 
+        select:not([disabled]), 
+        textarea:not([disabled]), 
+        [tabindex]:not([tabindex="-1"]), 
+        [contenteditable="true"], 
+        area[href], 
+        details, 
+        summary, 
+        iframe, 
+        object, 
+        embed, 
+        li[data-testid="breadcrumb-item"], 
+        li[data-testid="breadcrumb-item"] a, 
+        li[data-testid="breadcrumb-item"] button, 
+        li[data-testid="breadcrumb-item"] [tabindex],
+        div[className="sequence-navigation-tabs-container"],
+        div[className="sequence-navigation-tabs d-flex flex-grow-1"]
+      `;
       
       const nonModalNodes = Array.from(document.querySelectorAll(`body *:not(.voice-modal):not(.voice-modal *)`)).filter(node => node.matches(focusableSelector));
 
@@ -65,7 +64,6 @@ trapFocusInModal = (shouldTrap = true) => {
       for (let i = 0; i < nonModalNodes.length; i++) {
         const node = nonModalNodes[i];
         if (!modalNodes.includes(node)) {
-          // Store whether the element had a tabindex explicitly set
           node._prevTabindex = node.hasAttribute('tabindex') ? node.getAttribute('tabindex') : 'none';
           node.setAttribute('tabindex', '-1');
           node.style.outline = 'none';
@@ -73,29 +71,25 @@ trapFocusInModal = (shouldTrap = true) => {
         }
       }
 
-      // const firstFocusable = modal.querySelector('button.btn-close');
-      const firstFocusable = document.getElementById('voiceText');
-     if (firstFocusable) {
-      firstFocusable.setAttribute('tabindex', '0'); // Make voiceText focusable
-      firstFocusable.focus();
-    }
+      // const firstFocusable = document.getElementById('voiceText');
+      // if (firstFocusable) {
+      //   firstFocusable.setAttribute('tabindex', '0');
+      //   firstFocusable.focus();
+      // }
 
       const micButton = document.querySelector('button.mic-btn');
-        if (micButton && !(micButton.disabled)) {
-          micButton.disabled = true
-        }
+      if (micButton && !micButton.disabled) {
+        micButton.disabled = true;
+      }
 
       const headerSearchWrap = document.getElementById('headerSearchWrap');
       if (headerSearchWrap) {
-        // headerSearchWrap.style.outline = 'unset';
         headerSearchWrap.classList.add('remove_focus');
-     
       }
 
       console.log('Focus trap applied for Voice Search modal', {
         modalNodes: modalNodes.length,
         nonModalNodes: nonModalNodes.length,
-        focusableElements: nonModalNodes.map(node => ({ tag: node.tagName, id: node.id, class: node.className, tabindex: node._prevTabindex })),
         timestamp: new Date().toISOString(),
       });
     } else if (!shouldTrap && this.nonModalNodes.length > 0) {
@@ -108,11 +102,10 @@ trapFocusInModal = (shouldTrap = true) => {
           node.removeAttribute('tabindex');
         }
         node.style.outline = '';
-        // Verify restoration
         if (node.hasAttribute('tabindex') && node.getAttribute('tabindex') === '-1') {
           failedRestorations.push({ tag: node.tagName, id: node.id, class: node.className });
         }
-        node._prevTabindex = null; // Clear stored property
+        node._prevTabindex = null;
       }
 
       console.log('Tabindex restored for non-modal elements', {
@@ -121,37 +114,31 @@ trapFocusInModal = (shouldTrap = true) => {
         timestamp: new Date().toISOString(),
       });
 
-      // Focus the microphone button to ensure tab navigation resumes
       const micButton = document.querySelector('button.mic-btn');
-        // if (micButton && !(micButton.disabled)) {
-        if (micButton ) {
-          if (micButton.disabled) {
-            micButton.disabled = false; // Enable the button
-            console.log('Microphone button enabled', {
-              tag: micButton.tagName,
-              class: micButton.className,
-              timestamp: new Date().toISOString(),
-            });
-          }
-
-            const headerSearchWrap = document.getElementById('headerSearchWrap');
-            if (headerSearchWrap) {
-              // headerSearchWrap.style.outline = '1px auto';
-              // headerSearchWrap.focus();
-              headerSearchWrap.classList.remove('remove_focus');
-            }
-
-          micButton.focus();
-          console.log('Focused microphone button after modal close', {
+      if (micButton) {
+        if (micButton.disabled) {
+          micButton.disabled = false;
+          console.log('Microphone button enabled', {
             tag: micButton.tagName,
-            id: micButton.id,
             class: micButton.className,
             timestamp: new Date().toISOString(),
           });
-        } else {
-          // Fallback to first focusable element on the page
-          // const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"], [contenteditable="true"], area[href], summary';
-          const focusableSelector = `
+        }
+
+        const headerSearchWrap = document.getElementById('headerSearchWrap');
+        if (headerSearchWrap) {
+          headerSearchWrap.classList.remove('remove_focus');
+        }
+        
+        micButton.focus();
+        console.log('Focused microphone button after modal close', {
+          tag: micButton.tagName,
+          id: micButton.id,
+          class: micButton.className,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        const focusableSelector = `
           a[href], 
           button:not([disabled]), 
           input:not([disabled]), 
@@ -170,18 +157,18 @@ trapFocusInModal = (shouldTrap = true) => {
           li[data-testid="breadcrumb-item"] button, 
           li[data-testid="breadcrumb-item"] [tabindex]
         `;
-          
-          const firstPageFocusable = document.querySelector(focusableSelector);
-          if (firstPageFocusable) {
-            firstPageFocusable.focus();
-            console.log('Focused first page element after modal close', {
-              tag: firstPageFocusable.tagName,
-              id: firstPageFocusable.id,
-              class: firstPageFocusable.className,
-              timestamp: new Date().toISOString(),
-            });
-          }
+        
+        const firstPageFocusable = document.querySelector(focusableSelector);
+        if (firstPageFocusable) {
+          firstPageFocusable.focus();
+          console.log('Focused first page element after modal close', {
+            tag: firstPageFocusable.tagName,
+            id: firstPageFocusable.id,
+            class: firstPageFocusable.className,
+            timestamp: new Date().toISOString(),
+          });
         }
+      }
 
       this.nonModalNodes = [];
     }
@@ -190,60 +177,37 @@ trapFocusInModal = (shouldTrap = true) => {
   componentDidUpdate(prevProps, prevState) {
     if (this.state.showModal && !prevState.showModal) {
       this.trapFocusInModal(true);
+    } else if (!this.state.showModal && prevState.showModal) {
+      this.trapFocusInModal(false);
     }
-    else if (!this.state.showModal && prevState.showModal) {
-    this.trapFocusInModal(false);
-  }
+    if (this.state.finalText !== prevState.finalText || this.state.interimText !== prevState.interimText) {
+      this.forceUpdate();
+      console.log('Text updated, forcing re-render', { finalText: this.state.finalText, interimText: this.state.interimText, timestamp: new Date().toISOString() });
+    }
   }
 
   componentDidMount() {
     document.addEventListener('keydown', this.handleEscKey);
+    if (window.location.protocol !== 'https:' && process.env.NODE_ENV !== 'development') {
+      console.warn('Running on HTTP, transcription may fail due to CORS or security restrictions', { timestamp: new Date().toISOString() });
+      this.setState({ debugMessage: 'Please use HTTPS to ensure transcription works correctly.' });
+    }
   }
 
   componentWillUnmount() {
     document.removeEventListener('keydown', this.handleEscKey);
     console.log('AudioSearch unmounting, triggering cleanup', { timestamp: new Date().toISOString() });
-    this.handleStopRecording();
+    this.handleStopRecording(true);
     this.stopAllTracks();
-    if (this.recognitionRef.current) {
-      this.recognitionRef.current.onresult = null;
-      this.recognitionRef.current.onerror = null;
-      this.recognitionRef.current.onend = null;
-      this.recognitionRef.current = null;
+    if (this.speechRecognition.current) {
+      this.speechRecognition.current.stop();
+      this.speechRecognition.current = null;
     }
-    this.clearAllTimeouts();
+    if (this.recordingTimeout) {
+      clearTimeout(this.recordingTimeout);
+      this.recordingTimeout = null;
+    }
   }
-
-  
-
-  clearAllTimeouts = () => {
-    if (this.recordingTimeoutRef.current) {
-      clearTimeout(this.recordingTimeoutRef.current);
-      this.recordingTimeoutRef.current = null;
-    }
-    if (this.speechDetectionTimeoutRef.current) {
-      clearTimeout(this.speechDetectionTimeoutRef.current);
-      this.speechDetectionTimeoutRef.current = null;
-    }
-    if (this.interimTimeoutRef.current) {
-      clearTimeout(this.interimTimeoutRef.current);
-      this.interimTimeoutRef.current = null;
-    }
-    this.setState({ debugMessage: 'All timeouts cleared', timestamp: new Date().toISOString() });
-  };
-
-  handleEscKey = (event) => {
-    if (event.key === 'Escape' && this.state.showModal && !this.isStoppingRef.current) {
-      event.stopPropagation();
-      event.preventDefault();
-      console.log('ESC key detected', { showModal: this.state.showModal, timestamp: new Date().toISOString() });
-      this.audioChunksRef.current = [];
-      this.isStartingRef.current = false;
-      this.isStoppingRef.current = false;
-      this.handleStopRecording();
-
-    }
-  };
 
   stopAllTracks = () => {
     if (this.streamRef.current) {
@@ -254,263 +218,134 @@ trapFocusInModal = (shouldTrap = true) => {
       });
       this.streamRef.current = null;
     }
-    this.setState({ debugMessage: 'All tracks stopped' });
   };
 
-  initializeSpeechRecognition = (langOverride = null) => {
-    const { currentLang } = this.props;
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      if (this.recognitionRef.current) {
-        this.recognitionRef.current.onresult = null;
-        this.recognitionRef.current.onerror = null;
-        this.recognitionRef.current.onend = null;
-        try {
-          this.recognitionRef.current.stop();
-          console.log('Previous SpeechRecognition stopped', { timestamp: new Date().toISOString() });
-          this.setState({ debugMessage: 'Previous SpeechRecognition stopped' });
-        } catch (error) {
-          console.log('SpeechRecognition already stopped or not started:', error.message, { timestamp: new Date().toISOString() });
-        }
-      }
-      this.recognitionRef.current = new SpeechRecognition();
-      const lang = langOverride || currentLang || 'en-US';
-      this.recognitionRef.current.lang = lang;
-      this.recognitionRef.current.interimResults = true;
-      this.recognitionRef.current.continuous = true;
-      console.log('SpeechRecognition initialized', { lang, currentLang, langOverride, timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: `SpeechRecognition initialized, lang: ${lang}` });
+  handleMediaRecorderStop = async () => {
+    console.log('handleMediaRecorderStop called', { isStopping: this.isStoppingRef.current, chunks: this.audioChunksRef.current.length, interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
+    
+    if (!this.isStoppingRef.current) {
+      console.warn('MediaRecorder stopped unexpectedly', { chunks: this.audioChunksRef.current.length, interimText: this.state.interimText, timestamp: new Date().toISOString() });
+      this.setState({ debugMessage: 'MediaRecorder stopped unexpectedly, ignoring' });
+      this.cleanupAfterStop();
+      return;
     }
-  };
 
-  startSpeechRecognition = () => {
-    if (!this.recognitionRef.current || !this.streamRef.current || !this.streamRef.current.active) {
-      console.error('Cannot start SpeechRecognition: recognition or stream not ready', {
-        recognition: !!this.recognitionRef.current,
-        streamActive: this.streamRef.current?.active,
-        streamTracks: this.streamRef.current?.getTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
-        timestamp: new Date().toISOString(),
-      });
-      this.setState({
-        debugMessage: 'Cannot start SpeechRecognition: recognition or stream not ready',
-        finalText: 'Microphone or recognition not ready. Please check microphone permissions and try again.',
-        showModal: true,
-        isListening: false,
-        canRespeak: true,
-      });
-      return false;
-    }
+    const totalSize = this.audioChunksRef.current.reduce((sum, chunk) => sum + (chunk.size || 0), 0) || 0;
+    const recordingDuration = this.state.recordingStartTime ? (new Date().getTime() - this.state.recordingStartTime) / 1000 : 0;
+    console.log('MediaRecorder onstop processing', { isStopping: this.isStoppingRef.current, chunks: this.audioChunksRef.current.length, totalSize, recordingDuration, timestamp: new Date().toISOString() });
 
     try {
-      this.recognitionRef.current.start();
-      console.log('SpeechRecognition start called', { timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: 'Speech recognition started' });
-      return true;
-    } catch (error) {
-      console.error('Error starting SpeechRecognition:', { error: error.message, timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: `Error starting SpeechRecognition: ${error.message}`, canRespeak: true });
-      return false;
-    }
-  };
+      const mimeType = this.mediaRecorder.current.mimeType || 'audio/webm';
+      const audioBlob = new Blob(this.audioChunksRef.current, { type: mimeType });
+      console.log('Audio blob created', { size: audioBlob.size, type: mimeType, chunks: this.audioChunksRef.current.length, duration: recordingDuration, timestamp: new Date().toISOString() });
+      this.setState({ debugMessage: `Sending audio to transcription API, MIME: ${mimeType}, size: ${audioBlob.size}`, modalMessage: 'Processing transcription...' });
 
- handleAudioSearch = async (keepModalOpen = true) => {
-    if (this.isStartingRef.current || this.isStoppingRef.current) {
-      console.log('Audio search or cleanup in progress, ignoring', { timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: 'Audio search or cleanup in progress, ignoring', canRespeak: true });
-      return;
-    }
-    this.isStartingRef.current = true;
-    console.log('handleAudioSearch started', { currentLang: this.props.currentLang, browser: navigator.userAgent, timestamp: new Date().toISOString() });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, `recording.${mimeType.split('/')[1]}`);
+      formData.append('language', this.props.currentLang || 'en-US');
 
-    // Log available microphones
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioDevices = devices.filter(device => device.kind === 'audioinput');
-      console.log('Available audio devices:', audioDevices.map(d => ({ deviceId: d.deviceId, label: d.label })), { timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: `Available audio devices: ${audioDevices.length}` });
-    } catch (error) {
-      console.error('Error enumerating audio devices:', { error: error.message, timestamp: new Date().toISOString() });
-    }
-
-    // Set initial state with waiting message for NVDA
-    this.setState({
-      showModal: true,
-      isListening: false,
-      interimText: '',
-      finalText: '',
-      debugMessage: 'Initializing audio search, waiting for modal to render...',
-      canRespeak: false,
-      canSearch: false,
-      transcriptBuffer: [],
-      modalMessage: 'Preparing voice search, please wait...',
-    });
-
-    // Reset existing MediaRecorder
-    if (this.mediaRecorder.current) {
-      console.log('Clearing existing MediaRecorder', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
-      this.mediaRecorder.current.onstop = null;
-      this.mediaRecorder.current.ondataavailable = null;
-      if (this.mediaRecorder.current.state !== 'inactive') {
-        this.mediaRecorder.current.stop();
-      }
-      this.mediaRecorder.current = null;
-    }
-    this.audioChunksRef.current = [];
-    this.setState({ debugMessage: 'Audio chunks initialized' });
-    this.stopAllTracks();
-
-    // Initialize fresh SpeechRecognition
-    this.initializeSpeechRecognition();
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition || !this.recognitionRef.current) {
-      this.setState({
-        debugMessage: 'Speech recognition not supported in this browser.',
-        isListening: false,
-        showModal: true,
-        canRespeak: true,
-        modalMessage: '',
-        finalText: 'Speech recognition not supported in this browser.',
-      });
-      alert('Speech recognition not supported in this browser.');
-      this.isStartingRef.current = false;
-      return;
-    }
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      this.setState({
-        debugMessage: 'Microphone access not supported.',
-        isListening: false,
-        showModal: true,
-        canRespeak: true,
-        modalMessage: '',
-        finalText: 'Microphone access not supported in this browser.',
-      });
-      alert('Microphone access not supported in this browser.');
-      this.isStartingRef.current = false;
-      return;
-    }
-
-    if (!window.isSecureContext) {
-      this.setState({
-        debugMessage: 'Microphone access requires a secure context (HTTPS or localhost).',
-        isListening: false,
-        showModal: true,
-        canRespeak: true,
-        modalMessage: '',
-        finalText: 'Microphone access requires a secure context (HTTPS).',
-      });
-      alert('Microphone access requires a secure context (HTTPS).');
-      this.isStartingRef.current = false;
-      return;
-    }
-
-    let mimeType = 'audio/wav';
-    if (!MediaRecorder.isTypeSupported('audio/wav')) {
-      mimeType = 'audio/webm';
-      this.setState({ debugMessage: 'Falling back to MIME type: audio/webm' });
-    } else {
-      this.setState({ debugMessage: 'Using MIME type: audio/wav' });
-    }
-
-    try {
-      this.setState({ debugMessage: 'Requesting microphone for shared stream...' });
-      this.streamRef.current = await navigator.mediaDevices.getUserMedia({
-        audio: { sampleRate: 16000, channelCount: 1 },
-      });
-      console.log('Microphone stream acquired', { 
-        active: this.streamRef.current.active, 
-        tracks: this.streamRef.current.getTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })), 
-        timestamp: new Date().toISOString() 
-      });
-      this.setState({ debugMessage: 'Microphone stream acquired' });
-
-      // Validate stream before MediaRecorder
-      if (!this.streamRef.current || !this.streamRef.current.active || this.streamRef.current.getAudioTracks().length === 0) {
-        console.error('Invalid stream for MediaRecorder', {
-          streamExists: !!this.streamRef.current,
-          streamActive: this.streamRef.current?.active,
-          audioTracks: this.streamRef.current?.getAudioTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
-          timestamp: new Date().toISOString(),
+      console.log('Initiating transcription API call', { url: `${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, mimeType, size: audioBlob.size, timestamp: new Date().toISOString() });
+      try {
+        const response = await fetch(`${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, {
+          method: 'POST',
+          body: formData,
         });
-        this.setState({
-          debugMessage: 'Invalid microphone stream for MediaRecorder',
-          isListening: false,
-          showModal: true,
-          canRespeak: true,
-          modalMessage: '',
-          finalText: 'Invalid microphone stream. Please check permissions and try again.',
-        });
-        this.stopAllTracks();
-        this.isStartingRef.current = false;
-        this.clearAllTimeouts();
-        return;
-      }
+        console.log('Transcription API response received', { status: response.status, headers: Object.fromEntries(response.headers.entries()), timestamp: new Date().toISOString() });
+        const data = await response.json();
+        console.log('Transcription API data parsed', { data, timestamp: new Date().toISOString() });
 
-      this.mediaRecorder.current = new MediaRecorder(this.streamRef.current, { mimeType });
-      console.log('MediaRecorder initialized', { mediaRecorder: !!this.mediaRecorder.current, timestamp: new Date().toISOString() });
+        if (response.ok) {
+          if (data.text) {
+            console.log('Transcription successful', { text: data.text, timestamp: new Date().toISOString() });
+            this.setState({ 
+              finalText: data.text, 
+              canSearch: true, 
+              canRespeak: true, 
+              debugMessage: 'Transcription successful: ' + data.text, 
+              isListening: false, 
+              modalMessage: '',
+            }, () => {
+              console.log('State updated with transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
+              const voiceText = document.getElementById('voiceText');
+              if (voiceText) {
+                // voiceText.setAttribute('aria-live', 'polite');
+                voiceText.setAttribute('tabindex', '0');
+                      // role="status"
+                // voiceText.setAttribute('aria-live', 'assertive');
+                // voiceText.setAttribute('role', 'status');
 
-      // Delay starting MediaRecorder and SpeechRecognition for 15 seconds to allow NVDA announcements
-      setTimeout(() => {
-        // Check if modal is still open and not stopping
-        if (!this.state.showModal || this.isStoppingRef.current) {
-          console.log('Modal closed or stopping, aborting audio start', { 
-            showModal: this.state.showModal, 
-            isStopping: this.isStoppingRef.current, 
-            timestamp: new Date().toISOString() 
-          });
-          this.setState({ debugMessage: 'Modal closed or stopping, aborting audio start', isListening: false, canRespeak: true, modalMessage: '', finalText: 'Voice search stopped. Please try again.' });
-          this.isStartingRef.current = false;
-          this.stopAllTracks();
-          this.clearAllTimeouts();
-          return;
-        }
-
-        // Set focus and update aria-live for NVDA announcement
-        const voiceText = document.getElementById('voiceText');
-        if (voiceText) {
-          voiceText.setAttribute('aria-live', 'assertive');
-          voiceText.textContent = 'Voice search ready, start speaking.';
-          voiceText.focus();
-          console.log('Focused voiceText element with aria-live announcement', { timestamp: new Date().toISOString() });
-          // Reset aria-live after announcement
-          setTimeout(() => {
-            if (voiceText) {
-              voiceText.setAttribute('aria-live', 'polite');
-            }
-          }, 2000);
-        }
-
-        // Update modal message to indicate listening
-        this.setState({ modalMessage: 'Listening for speech...', debugMessage: 'Starting recording after 15s delay' });
-
-        // Start MediaRecorder
-        this.mediaRecorder.current.onstart = () => {
-          console.log('MediaRecorder started', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
-          this.setState({ debugMessage: `MediaRecorder started, state: ${this.mediaRecorder.current?.state || 'null'}` });
-        };
-
-        this.mediaRecorder.current.onstop = async () => {
-          console.log('MediaRecorder onstop triggered', { isStopping: this.isStoppingRef.current, chunks: this.audioChunksRef.current.length, timestamp: new Date().toISOString() });
-          const totalSize = this.audioChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0) || 0;
-
-          if (this.audioChunksRef.current.length === 0 || this.state.finalText === 'No speech detected. Please speak clearly or click Respeak to try again.') {
-            console.log('Skipping transcription: no audio chunks collected', { length: this.audioChunksRef.current.length, totalSize, timestamp: new Date().toISOString() });
+                voiceText.focus();
+                // setTimeout(() => {
+                //   if (voiceText) {
+                //     voiceText.setAttribute('aria-live', 'polite');
+                //   }
+                // }, 2000);
+              }
+              this.forceUpdate();
+            });
+          } else {
+            console.log('Transcription returned empty text, using interimText', { interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
+            const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'No speech detected. Please speak clearly and try again.';
             this.setState({
-              debugMessage: 'No speech detected. Please speak clearly and try again.',
+              debugMessage: 'No speech detected in audio, falling back to interimText.',
               showModal: true,
               isListening: false,
               canRespeak: true,
-              canSearch: false,
+              canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
               modalMessage: '',
-              finalText: 'No speech detected. Please speak clearly or click Respeak to try again.',
+              finalText: fallbackText,
+            }, () => {
+              console.log('State updated with empty transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
+              const voiceText = document.getElementById('voiceText');
+              if (voiceText) {
+                voiceText.setAttribute('aria-live', 'assertive');
+                voiceText.focus();
+                setTimeout(() => {
+                  if (voiceText) {
+                    voiceText.setAttribute('aria-live', 'polite');
+                  }
+                }, 2000);
+              }
             });
-            this.audioChunksRef.current = [];
-            this.stopAllTracks();
-            this.mediaRecorder.current = null;
-            this.isStartingRef.current = false;
-            this.isStoppingRef.current = false;
-            
+          }
+        } else {
+          console.error('Transcription API error:', { status: response.status, error: data.error || 'Unknown error', data, timestamp: new Date().toISOString() });
+          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Transcription error. Please try again.';
+          this.setState({
+            debugMessage: 'Transcription error: ' + (data.error || 'Unknown error'),
+            showModal: true,
+            isListening: false,
+            canRespeak: true,
+            canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
+            modalMessage: '',
+            finalText: fallbackText,
+          }, () => {
+            console.log('State updated with transcription error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
+            const voiceText = document.getElementById('voiceText');
+            if (voiceText) {
+              voiceText.setAttribute('aria-live', 'assertive');
+              voiceText.focus();
+              setTimeout(() => {
+                if (voiceText) {
+                  voiceText.setAttribute('aria-live', 'polite');
+                  }
+                }, 2000);
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Transcription API fetch error:', { error: error.message, stack: error.stack, timestamp: new Date().toISOString() });
+          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Error connecting to transcription service. Please try again.';
+          this.setState({
+            debugMessage: 'Transcription fetch error: ' + error.message,
+            showModal: true,
+            isListening: false,
+            canRespeak: true,
+            canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
+            modalMessage: '',
+            finalText: fallbackText,
+          }, () => {
+            console.log('State updated with fetch error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
             const voiceText = document.getElementById('voiceText');
             if (voiceText) {
               voiceText.setAttribute('aria-live', 'assertive');
@@ -521,60 +356,22 @@ trapFocusInModal = (shouldTrap = true) => {
                 }
               }, 2000);
             }
-
-
-            return;
-          }
-
-          const audioBlob = new Blob(this.audioChunksRef.current, { type: mimeType });
-          this.stopAllTracks();
-          this.mediaRecorder.current = null;
-
-          this.setState({ debugMessage: `Sending audio to transcription API, MIME: ${mimeType}, size: ${audioBlob.size}` });
-
-          const formData = new FormData();
-          formData.append('audio', audioBlob, `recording.${mimeType.split('/')[1]}`);
-          formData.append('language', this.props.currentLang || 'en-US');
-
-          try {
-            const response = await fetch(`${getConfig().LMS_BASE_URL}/explore-courses/api/transcribe-audio/`, {
-              method: 'POST',
-              body: formData,
-            });
-            const data = await response.json();
-            console.log('Transcription API response:', { status: response.status, data, timestamp: new Date().toISOString() });
-
-            if (response.ok && data.text) {
-              this.setState({ finalText: data.text, canSearch: true, debugMessage: 'Transcription successful: ' + data.text, isListening: false, canRespeak: true, modalMessage: '' });
-            } else {
-              console.error('Transcription API error:', { status: response.status, error: data.error || 'Unknown error', timestamp: new Date().toISOString() });
-              this.setState({
-                debugMessage: 'Transcription error: ' + (data.error || 'Unknown error'),
-                showModal: true,
-                isListening: false,
-                canRespeak: true,
-                modalMessage: '',
-                finalText: 'Transcription error. Please try again.',
-              });
-            }
-          } catch (error) {
-            console.error('Transcription fetch error:', { error: error.message, timestamp: new Date().toISOString() });
-            this.setState({
-              debugMessage: 'Fetch error: ' + error.message,
-              showModal: true,
-              isListening: false,
-              canRespeak: true,
-              modalMessage: '',
-              finalText: 'Error connecting to transcription service. Please try again.',
-            });
-          }
-
-          this.audioChunksRef.current = [];
-          this.isStartingRef.current = false;
-          this.isStoppingRef.current = false;
-
+          });
+        }
+      } catch (error) {
+        console.error('Error in handleMediaRecorderStop:', { error: error.message, stack: error.stack, timestamp: new Date().toISOString() });
+        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Error processing audio. Please try again.';
+        this.setState({
+          debugMessage: 'Processing error: ' + error.message,
+          showModal: true,
+          isListening: false,
+          canRespeak: true,
+          canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
+          modalMessage: '',
+          finalText: fallbackText,
+        }, () => {
+          console.log('State updated with processing error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
           const voiceText = document.getElementById('voiceText');
-
           if (voiceText) {
             voiceText.setAttribute('aria-live', 'assertive');
             voiceText.focus();
@@ -584,148 +381,440 @@ trapFocusInModal = (shouldTrap = true) => {
               }
             }, 2000);
           }
+        });
+      }
 
+      this.cleanupAfterStop();
+    };
+
+    cleanupAfterStop = () => {
+      console.log('Cleaning up after MediaRecorder stop', { timestamp: new Date().toISOString() });
+      this.audioChunksRef.current = [];
+      this.stopAllTracks();
+      this.mediaRecorder.current = null;
+      if (this.speechRecognition.current) {
+        this.speechRecognition.current.stop();
+        this.speechRecognition.current = null;
+      }
+      this.isStartingRef.current = false;
+      this.isStoppingRef.current = false;
+      if (this.recordingTimeout) {
+        clearTimeout(this.recordingTimeout);
+        this.recordingTimeout = null;
+      }
+      this.setState({ recordingStartTime: null });
+    };
+
+    handleAudioSearch = async () => {
+      if (this.isStartingRef.current || this.isStoppingRef.current) {
+        console.log('Audio search or cleanup in progress, ignoring', { timestamp: new Date().toISOString() });
+        this.setState({ debugMessage: 'Audio search or cleanup in progress, ignoring', canRespeak: true });
+        return;
+      }
+
+      console.log('handleAudioSearch started', { currentLang: this.props.currentLang, browser: navigator.userAgent, timestamp: new Date().toISOString() });
+
+      this.setState({
+        showModal: true,
+        isListening: false,
+        interimText: '',
+        finalText: '',
+        debugMessage: 'Opening voice search modal',
+        canRespeak: true,
+        canSearch: false,
+        transcriptBuffer: [],
+        modalMessage: 'Click Speak to start voice search.',
+        recordingStartTime: null,
+      });
+    };
+
+    handleSpeak = async () => {
+      if (this.isStartingRef.current || this.isStoppingRef.current || this.state.isListening) {
+        console.log('Speak ignored: recording or cleanup in progress', { timestamp: new Date().toISOString() });
+        this.setState({ debugMessage: 'Speak ignored: recording or cleanup in progress', canRespeak: true });
+        return;
+      }
+      this.isStartingRef.current = true;
+      console.log('handleSpeak started', { currentLang: this.props.currentLang, browser: navigator.userAgent, timestamp: new Date().toISOString() });
+
+      // Reset recording state
+      this.audioChunksRef.current = [];
+      this.stopAllTracks();
+      if (this.mediaRecorder.current) {
+        this.mediaRecorder.current.onstop = null;
+        this.mediaRecorder.current.ondataavailable = null;
+        if (this.mediaRecorder.current.state !== 'inactive') {
+          try {
+            this.mediaRecorder.current.stop();
+            console.log('MediaRecorder stopped during reset', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
+          } catch (error) {
+            console.log('Error stopping MediaRecorder during reset:', { error: error.message, timestamp: new Date().toISOString() });
+          }
+        }
+        this.mediaRecorder.current = null;
+      }
+      if (this.speechRecognition.current) {
+        this.speechRecognition.current.stop();
+        this.speechRecognition.current = null;
+      }
+      if (this.recordingTimeout) {
+        clearTimeout(this.recordingTimeout);
+        this.recordingTimeout = null;
+      }
+
+      this.setState({
+        isListening: false,
+        interimText: '',
+        finalText: '',
+        debugMessage: 'Initializing recording...',
+        canRespeak: false,
+        canSearch: false,
+        transcriptBuffer: [],
+        modalMessage: 'Preparing to record, please wait...',
+        recordingStartTime: null,
+      });
+
+      try {
+        // Warn about HTTP in development, block in production
+        if (window.location.protocol !== 'https:') {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('Running on HTTP in development, transcription may be unreliable due to CORS or security restrictions', { protocol: window.location.protocol, timestamp: new Date().toISOString() });
+            this.setState({ debugMessage: 'Warning: Running on HTTP, transcription may fail. Consider enabling HTTPS.' });
+          } else {
+            console.error('HTTPS required for reliable transcription', { protocol: window.location.protocol, timestamp: new Date().toISOString() });
+            this.setState({
+              debugMessage: 'HTTPS required for transcription. Please enable HTTPS.',
+              isListening: false,
+              showModal: true,
+              canRespeak: true,
+              modalMessage: '',
+              finalText: 'Please use HTTPS to enable voice transcription.',
+            }, () => {
+              console.log('State updated with HTTPS error', { finalText: this.state.finalText, timestamp: new Date().toISOString() });
+            });
+            this.isStartingRef.current = false;
+            return;
+          }
+        }
+
+        // Initialize Web Speech API
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          console.error('Web Speech API not supported in this browser', { browser: navigator.userAgent, timestamp: new Date().toISOString() });
+          this.setState({
+            debugMessage: 'Web Speech API not supported. Falling back to server-side transcription.',
+            isListening: false,
+            showModal: true,
+            canRespeak: true,
+            modalMessage: 'Voice recognition not supported in this browser. Server-side transcription will be used.',
+          }, () => {
+            console.log('State updated with Speech API error', { modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
+          });
+        } else {
+          this.speechRecognition.current = new SpeechRecognition();
+          this.speechRecognition.current.lang = this.props.currentLang || 'en-US';
+          this.speechRecognition.current.interimResults = true;
+          this.speechRecognition.current.continuous = true;
+          this.speechRecognition.current.maxAlternatives = 1;
+
+          this.speechRecognition.current.onresult = (event) => {
+            let interim = '';
+            let final = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              const transcript = event.results[i][0].transcript.trim();
+              if (event.results[i].isFinal) {
+                final += transcript + ' ';
+              } else {
+                interim += transcript + ' ';
+              }
+            }
+            const combinedTranscript = this.state.transcriptBuffer.join(' ') + final + interim;
+            console.log('SpeechRecognition result', { interim, final, combinedTranscript, eventResults: event.results.length, timestamp: new Date().toISOString() });
+            this.setState(
+              {
+                interimText: combinedTranscript.trim(),
+                transcriptBuffer: final ? [...this.state.transcriptBuffer, final.trim()] : this.state.transcriptBuffer,
+                debugMessage: `Interim text: ${combinedTranscript.trim()}`,
+              },
+              () => {
+                console.log('State updated with interim text', { interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
+              }
+            );
+          };
+
+          this.speechRecognition.current.onerror = (event) => {
+            console.error('SpeechRecognition error:', { error: event.error, timestamp: new Date().toISOString() });
+            let errorMessage = 'Error in voice recognition. Server-side transcription will be used.';
+            if (event.error === 'no-speech') {
+              errorMessage = 'Listening for speech...';
+            } else if (event.error === 'not-allowed') {
+              errorMessage = 'Microphone access denied for real-time transcription. Server-side transcription will be used.';
+            } else if (event.error === 'aborted') {
+              errorMessage = 'Voice recognition aborted. Server-side transcription will be used.';
+            }
+            this.setState({
+              debugMessage: `SpeechRecognition error: ${event.error}`,
+              modalMessage: errorMessage,
+            }, () => {
+              console.log('State updated with SpeechRecognition error', { modalMessage: this.state.modalMessage, interimText: this.state.interimText, timestamp: new Date().toISOString() });
+            });
+            if (event.error !== 'aborted' && this.state.isListening && this.speechRecognition.current) {
+              try {
+                this.speechRecognition.current.start();
+                console.log('SpeechRecognition restarted after error', { error: event.error, timestamp: new Date().toISOString() });
+              } catch (error) {
+                console.error('Failed to restart SpeechRecognition:', { error: error.message, timestamp: new Date().toISOString() });
+              }
+            }
+          };
+
+          this.speechRecognition.current.onend = () => {
+            console.log('SpeechRecognition ended', { isListening: this.state.isListening, timestamp: new Date().toISOString() });
+            if (this.state.isListening && this.speechRecognition.current) {
+              try {
+                this.speechRecognition.current.start();
+                console.log('SpeechRecognition restarted', { timestamp: new Date().toISOString() });
+              } catch (error) {
+                console.error('Failed to restart SpeechRecognition:', { error: error.message, timestamp: new Date().toISOString() });
+                this.setState({
+                  debugMessage: `SpeechRecognition restart failed: ${error.message}`,
+                  modalMessage: 'Voice recognition interrupted. Server-side transcription will be used.',
+                }, () => {
+                  console.log('State updated with SpeechRecognition restart failure', { modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
+                });
+              }
+            }
+          };
+        }
+
+        // Acquire microphone stream
+        try {
+          this.streamRef.current = await navigator.mediaDevices.getUserMedia({
+            audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true },
+          });
+          console.log('Microphone stream acquired', { 
+            active: this.streamRef.current.active, 
+            tracks: this.streamRef.current.getTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })), 
+            timestamp: new Date().toISOString() 
+          });
+          this.setState({ debugMessage: 'Microphone stream acquired' });
+        } catch (error) {
+          console.error('Microphone access error:', { error: error.name, message: error.message, timestamp: new Date().toISOString() });
+          let errorMessage = 'Unexpected error accessing microphone. Please try again.';
+          if (error.name === 'NotAllowedError') {
+            errorMessage = 'Microphone access denied. Please enable microphone permissions in your browser settings.';
+          } else if (error.name === 'NotFoundError') {
+            errorMessage = 'No microphone found. Please connect a microphone and try again.';
+          }
+          this.setState({
+            debugMessage: `Microphone error: ${error.message}`,
+            isListening: false,
+            showModal: true,
+            canRespeak: true,
+            modalMessage: '',
+            finalText: errorMessage,
+          }, () => {
+            console.log('State updated with microphone error', { finalText: this.state.finalText, timestamp: new Date().toISOString() });
+          });
+          this.isStartingRef.current = false;
+          return;
+        }
+
+        // Verify stream
+        if (!this.streamRef.current.active || this.streamRef.current.getAudioTracks().length === 0) {
+          console.error('Invalid stream: no audio tracks or inactive', {
+            streamActive: this.streamRef.current?.active,
+            audioTracks: this.streamRef.current?.getAudioTracks().map(t => ({ id: t.id, enabled: t.enabled, readyState: t.readyState })),
+            timestamp: new Date().toISOString(),
+          });
+          this.setState({
+            debugMessage: 'Invalid microphone stream: no audio tracks or inactive',
+            isListening: false,
+            showModal: true,
+            canRespeak: true,
+            modalMessage: '',
+            finalText: 'Invalid microphone stream. Please check your microphone and try again.',
+          }, () => {
+            console.log('State updated with invalid stream error', { finalText: this.state.finalText, timestamp: new Date().toISOString() });
+          });
+          this.stopAllTracks();
+          this.isStartingRef.current = false;
+          return;
+        }
+
+        // Initialize MediaRecorder
+        let mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'audio/webm';
+          this.setState({ debugMessage: 'Falling back to MIME type: audio/webm' });
+        }
+        this.mediaRecorder.current = new MediaRecorder(this.streamRef.current, { mimeType });
+        this.mediaRecorder.current.onstart = () => {
+          console.log('MediaRecorder started', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
+          this.setState({ debugMessage: `MediaRecorder started, state: ${this.mediaRecorder.current?.state || 'null'}` });
         };
-
         this.mediaRecorder.current.ondataavailable = (event) => {
+          console.log('MediaRecorder data available', { 
+            size: event.data.size, 
+            type: event.data.type, 
+            totalChunks: this.audioChunksRef.current.length + 1, 
+            timestamp: new Date().toISOString() 
+          });
           if (event.data.size > 0) {
             this.audioChunksRef.current.push(event.data);
             this.setState({ debugMessage: `Audio chunk received, size: ${event.data.size}, total chunks: ${this.audioChunksRef.current.length}` });
           } else {
-            this.setState({ debugMessage: 'Empty or ignored audio chunk received' });
+            console.log('Empty audio chunk received', { timestamp: new Date().toISOString() });
+            this.setState({ debugMessage: 'Empty audio chunk received' });
           }
         };
+        this.mediaRecorder.current.onstop = this.handleMediaRecorderStop;
 
-        let recordingStarted = false;
+        // Start SpeechRecognition and MediaRecorder
         try {
+          if (this.speechRecognition.current) {
+            this.speechRecognition.current.start();
+            console.log('SpeechRecognition started', { lang: this.speechRecognition.current.lang, timestamp: new Date().toISOString() });
+          }
           this.mediaRecorder.current.start(100);
-          console.log('MediaRecorder start called after 15s delay', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
-          this.setState({ debugMessage: `MediaRecorder start called, state: ${this.mediaRecorder.current?.state || 'null'}` });
-          recordingStarted = true;
+          console.log('MediaRecorder start called', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
+          this.setState({ 
+            debugMessage: `MediaRecorder started`, 
+            isListening: true, 
+            modalMessage: 'Listening for speech...',
+            recordingStartTime: new Date().getTime(),
+          }, () => {
+            console.log('State updated with recording start', { isListening: this.state.isListening, modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
+          });
         } catch (error) {
-          console.error('Error starting MediaRecorder:', { error: error.message, timestamp: new Date().toISOString() });
+          console.error('Error starting MediaRecorder or SpeechRecognition:', { error: error.message, timestamp: new Date().toISOString() });
           this.setState({
-            debugMessage: `Error starting MediaRecorder: ${error.message}`,
+            debugMessage: `Error starting recording: ${error.message}`,
             isListening: false,
             showModal: true,
             canRespeak: true,
             modalMessage: '',
             finalText: 'Error starting microphone. Please check permissions and try again.',
+          }, () => {
+            console.log('State updated with recording error', { finalText: this.state.finalText, timestamp: new Date().toISOString() });
           });
-          this.isStartingRef.current = false;
           this.stopAllTracks();
-          this.clearAllTimeouts();
+          if (this.speechRecognition.current) {
+            this.speechRecognition.current.stop();
+            this.speechRecognition.current = null;
+          }
+          this.isStartingRef.current = false;
           return;
         }
 
-        // Configure SpeechRecognition event handlers
-        this.recognitionRef.current.onresult = (event) => {
-          console.log('Speech recognition onresult:', { results: event.results, timestamp: new Date().toISOString() });
-          if (!event.results || !event.results[0] || !event.results[0][0]) {
-            this.setState({ debugMessage: 'Invalid results structure', canRespeak: true });
-            return;
-          }
+        // Set 3-minute timeout
+        this.recordingTimeout = setTimeout(() => {
+          console.log('Recording timeout reached (3 minutes)', { timestamp: new Date().toISOString() });
+          this.setState({ debugMessage: 'Recording stopped after 3 minutes' });
+          this.handleStopRecording(false);
+        }, 180000);
 
-          let interim = '';
-          const newBuffer = [...this.state.transcriptBuffer];
-          for (let i = 0; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-              interim += transcript + ' ';
-              newBuffer.push({ text: transcript, isFinal: true, confidence: event.results[i][0].confidence });
-            } else {
-              interim += transcript;
-              newBuffer.push({ text: transcript, isFinal: false, confidence: event.results[i][0].confidence });
-            }
-          }
-          console.log('Speech result details:', { transcript: interim, isFinal: event.results[0].isFinal, confidence: event.results[0][0].confidence, buffer: newBuffer, timestamp: new Date().toISOString() });
-          this.setState({
-            interimText: interim,
-            transcriptBuffer: newBuffer,
-            debugMessage: `Interim text: ${interim}, isFinal: ${event.results[0].isFinal}, confidence: ${event.results[0][0].confidence}`,
+        this.isStartingRef.current = false;
+      } catch (error) {
+        console.error('Unexpected error in handleSpeak:', { error: error.name, message: error.message, timestamp: new Date().toISOString() });
+        let errorMessage = 'Unexpected error accessing microphone. Please try again.';
+        if (error.name === 'NotAllowedError') {
+          errorMessage = 'Microphone access denied. Please enable microphone permissions in your browser settings.';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage = 'No microphone found. Please connect a microphone and try again.';
+        }
+        this.setState({
+          debugMessage: `Unexpected error: ${error.message}`,
+          isListening: false,
+          showModal: true,
+          canRespeak: true,
+          modalMessage: '',
+          finalText: errorMessage,
+        }, () => {
+          console.log('State updated with unexpected error', { finalText: this.state.finalText, timestamp: new Date().toISOString() });
+        });
+        this.stopAllTracks();
+        this.isStartingRef.current = false;
+        this.isStoppingRef.current = false;
+      }
+    };
+
+    handleStopRecording = (closeModal = false) => {
+      if (this.isStoppingRef.current) {
+        console.log('Stop recording ignored: already stopping', { timestamp: new Date().toISOString() });
+        this.setState({ debugMessage: 'Stop recording ignored: already stopping' });
+        return;
+      }
+
+      this.isStoppingRef.current = true;
+      console.log('Stop recording initiated', { showModal: this.state.showModal, isListening: this.state.isListening, interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, recordingStartTime: this.state.recordingStartTime, timestamp: new Date().toISOString() });
+      this.setState({ 
+        debugMessage: 'Stop recording initiated', 
+        isListening: false, 
+        modalMessage: 'Processing transcription...',
+        finalText: this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Processing transcription...',
+        canRespeak: false,
+      }, () => {
+        console.log('State updated with stop initiated', { finalText: this.state.finalText, modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
+      });
+
+      if (this.recordingTimeout) {
+        clearTimeout(this.recordingTimeout);
+        this.recordingTimeout = null;
+      }
+
+      if (this.speechRecognition.current) {
+        this.speechRecognition.current.stop();
+        console.log('SpeechRecognition stopped', { timestamp: new Date().toISOString() });
+        this.speechRecognition.current = null;
+      }
+
+      if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
+        try {
+          console.log('MediaRecorder stop triggered', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
+          this.mediaRecorder.current.stop();
+          this.setState({ debugMessage: `MediaRecorder stop triggered, state: ${this.mediaRecorder.current.state}` });
+        } catch (error) {
+          console.error('Error stopping MediaRecorder:', { error: error.message, timestamp: new Date().toISOString() });
+          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Error stopping recording. Please try again.';
+          this.setState({ 
+            debugMessage: `Error stopping MediaRecorder: ${error.message}`,
+            showModal: true,
+            isListening: false,
+            canRespeak: true,
+            canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
             modalMessage: '',
-          });
-          if (this.speechDetectionTimeoutRef.current) {
-            clearTimeout(this.speechDetectionTimeoutRef.current);
-            this.speechDetectionTimeoutRef.current = null;
-          }
-          if (event.results[0].isFinal) {
-            const finalTranscript = newBuffer.filter(t => t.isFinal).map(t => t.text).join(' ').trim();
-            this.setState({ isListening: false, transcriptBuffer: [], modalMessage: '' });
-            if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-              this.mediaRecorder.current.stop();
-            }
-            if (this.interimTimeoutRef.current) {
-              clearTimeout(this.interimTimeoutRef.current);
-              this.interimTimeoutRef.current = null;
-            }
-          } else {
-            if (!this.interimTimeoutRef.current) {
-              this.interimTimeoutRef.current = setTimeout(() => {
-                if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-                  const finalTranscript = this.state.transcriptBuffer.map(t => t.text).join(' ').trim();
-                  this.mediaRecorder.current.stop();
-                  this.setState({ debugMessage: 'Finalized interim text due to timeout', isListening: false, transcriptBuffer: [], modalMessage: '' });
+            finalText: fallbackText,
+          }, () => {
+            console.log('State updated with stop error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
+            const voiceText = document.getElementById('voiceText');
+            if (voiceText) {
+              voiceText.setAttribute('aria-live', 'assertive');
+              voiceText.focus();
+              setTimeout(() => {
+                if (voiceText) {
+                  voiceText.setAttribute('aria-live', 'polite');
                 }
-                this.interimTimeoutRef.current = null;
-              }, 4000);
+              }, 2000);
             }
-          }
-        };
-
-        this.recognitionRef.current.onerror = (event) => {
-          console.log('Speech recognition error details:', { error: event.error, timestamp: new Date().toISOString() });
-          if (event.error === 'no-speech') {
-            this.setState({
-              debugMessage: 'No speech detected by recognition API',
-              finalText: 'No speech detected. Please speak clearly or click Respeak to try again.',
-              showModal: true,
-              isListening: false,
-              canRespeak: true,
-              canSearch: false,
-              modalMessage: '',
-            });
-            this.audioChunksRef.current = [];
-            this.isStartingRef.current = false;
-            this.isStoppingRef.current = false;
-            this.clearAllTimeouts();
-            this.stopAllTracks();
-            if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-              this.mediaRecorder.current.stop();
-              this.setState({ debugMessage: 'MediaRecorder stopped due to no speech' });
-            }
-            if (this.recognitionRef.current) {
-              try {
-                this.recognitionRef.current.stop();
-                this.recognitionRef.current.onresult = null;
-                this.recognitionRef.current.onerror = null;
-                this.recognitionRef.current.onend = null;
-                this.recognitionRef.current = null;
-                this.setState({ debugMessage: 'Speech recognition stopped due to no speech' });
-              } catch (error) {
-                console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
-                this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
-              }
-            }
-          } else {
-            console.error('Speech recognition error:', { error: event.error, timestamp: new Date().toISOString() });
-            this.setState({
-              debugMessage: `Speech recognition error: ${event.error}`,
-              finalText: `Error: ${event.error}. Please check microphone permissions or try again.`,
-              showModal: true,
-              isListening: false,
-              canRespeak: true,
-              canSearch: false,
-              modalMessage: '',
-            });
-            this.audioChunksRef.current = [];
-            this.isStartingRef.current = false;
-            this.isStoppingRef.current = false;
-            this.clearAllTimeouts();
-          }
-
+          });
+          this.cleanupAfterStop();
+          return;
+        }
+      } else {
+        console.log('MediaRecorder already stopped or not initialized', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
+        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'No audio recorded. Please try again.';
+        this.setState({ 
+          debugMessage: 'MediaRecorder already stopped or not initialized',
+          showModal: closeModal ? false : this.state.showModal,
+          isListening: false,
+          canRespeak: true,
+          canSearch: !!this.state.transcriptBuffer.length || !!this.state.interimText,
+          modalMessage: '',
+          finalText: fallbackText,
+        }, () => {
+          console.log('State updated with no audio', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
           const voiceText = document.getElementById('voiceText');
-
           if (voiceText) {
             voiceText.setAttribute('aria-live', 'assertive');
             voiceText.focus();
@@ -735,442 +824,127 @@ trapFocusInModal = (shouldTrap = true) => {
               }
             }, 2000);
           }
-
-        };
-
-        this.recognitionRef.current.onend = () => {
-          console.log('Speech recognition onend triggered', { 
-            isListening: this.state.isListening, 
-            isStopping: this.isStoppingRef.current, 
-            timestamp: new Date().toISOString() 
-          });
-          if (this.state.isListening && !this.isStoppingRef.current) {
-            setTimeout(() => {
-              if (!this.isStoppingRef.current && !this.isStartingRef.current && this.recognitionRef.current) {
-                try {
-                  this.initializeSpeechRecognition();
-                  if (this.startSpeechRecognition()) {
-                    this.setState({ debugMessage: 'Speech recognition restarted', canRespeak: false });
-                  } else {
-                    this.setState({ 
-                      debugMessage: 'Failed to restart SpeechRecognition', 
-                      showModal: true, 
-                      canRespeak: true, 
-                      modalMessage: '', 
-                      finalText: 'Error restarting speech recognition. Please try again.' 
-                    });
-                    this.clearAllTimeouts();
-                  }
-                  this.isStartingRef.current = false;
-                } catch (error) {
-                  console.error('Error restarting recognition:', { error: error.message, timestamp: new Date().toISOString() });
-                  this.setState({
-                    debugMessage: `Error restarting recognition: ${error.message}`,
-                    showModal: true,
-                    isListening: false,
-                    canRespeak: true,
-                    modalMessage: '',
-                    finalText: 'Error restarting speech recognition. Please try again.',
-                  });
-                  this.clearAllTimeouts();
-                }
-              }
-            }, 1000);
-          } else {
-            this.isStartingRef.current = false;
-            this.isStoppingRef.current = false;
-          }
-        };
-
-        // Start SpeechRecognition
-        if (!this.streamRef.current || !this.streamRef.current.active || this.streamRef.current.getAudioTracks().length === 0) {
-          console.error('Microphone stream not ready for SpeechRecognition', {
-            streamExists: !!this.streamRef.current,
-            streamActive: this.streamRef.current?.active,
-            tracks: this.streamRef.current?.getTracks().map(t => ({ id: t.id, kind: t.kind, enabled: t.enabled, readyState: t.readyState })),
-            timestamp: new Date().toISOString(),
-          });
-          this.setState({
-            debugMessage: 'Microphone stream not ready for SpeechRecognition',
-            isListening: false,
-            showModal: true,
-            canRespeak: true,
-            modalMessage: '',
-            finalText: 'Microphone stream not ready. Please check permissions and try again.',
-          });
-          this.stopAllTracks();
-          this.isStartingRef.current = false;
-          this.clearAllTimeouts();
-          return;
-        }
-        if (this.startSpeechRecognition()) {
-          console.log('SpeechRecognition start called after 15s delay', { timestamp: new Date().toISOString() });
-          this.setState({ debugMessage: 'SpeechRecognition started successfully', isListening: true, modalMessage: 'Listening for speech...' });
-        } else {
-          console.error('SpeechRecognition start failed', { timestamp: new Date().toISOString() });
-          this.setState({
-            debugMessage: 'SpeechRecognition start failed',
-            isListening: false,
-            showModal: true,
-            canRespeak: true,
-            modalMessage: '',
-            finalText: 'Error starting speech recognition. Please try again.',
-          });
-          this.stopAllTracks();
-          this.isStartingRef.current = false;
-          this.clearAllTimeouts();
-          return;
-        }
-
-        // Start timeouts only if recording started successfully
-        if (recordingStarted) {
-          this.speechDetectionTimeoutRef.current = setTimeout(() => {
-            if (this.state.isListening && !this.isStoppingRef.current && !this.state.interimText && !this.state.finalText && this.state.transcriptBuffer.length === 0) {
-              console.log('No speech detected within 15seconds after recording start', { 
-                isStarting: this.isStartingRef.current, 
-                isStopping: this.isStoppingRef.current, 
-                isListening: this.state.isListening, 
-                showModal: this.state.showModal, 
-                canRespeak: this.state.canRespeak,
-                micButtonDisabled: this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current, 
-                timestamp: new Date().toISOString() 
-              });
-              this.setState({ 
-                debugMessage: 'No speech detected within 15seconds after recording start', 
-                finalText: 'No speech detected. Please speak clearly or click Respeak to try again.', 
-                isListening: false, 
-                showModal: true, 
-                canRespeak: true, 
-                canSearch: false,
-                modalMessage: '',
-              }, () => {
-                console.log('No speech detected state updated', { 
-                  isStarting: this.isStartingRef.current, 
-                  isStopping: this.isStoppingRef.current, 
-                  isListening: this.state.isListening, 
-                  showModal: this.state.showModal, 
-                  canRespeak: this.state.canRespeak,
-                  micButtonDisabled: this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current, 
-                  timestamp: new Date().toISOString() 
-                });
-              });
-              this.clearAllTimeouts();
-              this.stopAllTracks();
-              if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-                this.mediaRecorder.current.stop();
-                this.setState({ debugMessage: 'MediaRecorder stopped due to no speech' });
-              }
-              if (this.recognitionRef.current) {
-                try {
-                  this.recognitionRef.current.stop();
-                  this.recognitionRef.current.onresult = null;
-                  this.recognitionRef.current.onerror = null;
-                  this.recognitionRef.current.onend = null;
-                  this.recognitionRef.current = null;
-                  this.setState({ debugMessage: 'Speech recognition stopped due to no speech' });
-                } catch (error) {
-                  console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
-                  this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
-                }
-              }
-              this.isStartingRef.current = false;
-              this.isStoppingRef.current = false;
-            }
-          }, 20000); // 15 seconds after recording starts
-
-          this.recordingTimeoutRef.current = setTimeout(() => {
-            if (this.state.isListening && !this.isStoppingRef.current) {
-              console.log('Recording timeout triggered', { timestamp: new Date().toISOString() });
-              const finalTranscript = this.state.transcriptBuffer.map(t => t.text).join(' ').trim();
-              this.setState({ 
-                debugMessage: 'Recording timeout: stopping', 
-                finalText: finalTranscript || 'No speech detected. Please speak clearly or click Respeak to try again.', 
-                showModal: true, 
-                isListening: false, 
-                canRespeak: true,
-                transcriptBuffer: [],
-                modalMessage: '',
-              });
-              this.clearAllTimeouts();
-              this.stopAllTracks();
-              if (this.mediaRecorder.current && this.mediaRecorder.current.state !== 'inactive') {
-                this.mediaRecorder.current.stop();
-              }
-              if (this.recognitionRef.current) {
-                try {
-                  this.recognitionRef.current.stop();
-                  this.recognitionRef.current.onresult = null;
-                  this.recognitionRef.current.onerror = null;
-                  this.recognitionRef.current.onend = null;
-                  this.recognitionRef.current = null;
-                } catch (error) {
-                  console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
-                  this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
-                }
-              }
-              this.isStartingRef.current = false;
-              this.isStoppingRef.current = false;
-            }
-          }, 20000); // 20 seconds after recording starts
-        }
-      }, 13000); // 15-second delay for NVDA announcements
-    } catch (error) {
-      console.error('Unexpected error in handleAudioSearch:', { error: error.message, timestamp: new Date().toISOString() });
-      this.setState({
-        debugMessage: 'Unexpected error: ' + error.message,
-        isListening: false,
-        showModal: true,
-        canRespeak: true,
-        modalMessage: '',
-        finalText: 'Unexpected error. Please try again.',
-      });
-      this.stopAllTracks();
-      this.isStartingRef.current = false;
-      this.isStoppingRef.current = false;
-      this.clearAllTimeouts();
-    }
-  };
-  
-  handleStopRecording = () => {
-    if (this.isStoppingRef.current) {
-      console.log('Stop recording ignored: already stopping', { timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: 'Stop recording ignored: already stopping' });
-      return;
-    }
-
-    // this.isStoppingRef.current = true;
-    this.isStoppingRef.current = false;
-    console.log('Stop recording initiated', { showModal: this.state.showModal, isListening: this.state.isListening, timestamp: new Date().toISOString() });
-    this.setState({ debugMessage: 'Stop recording initiated', isListening: false, showModal: false });
-
-    this.clearAllTimeouts();
-    this.stopAllTracks();
-
-    if (this.recognitionRef.current) {
-      try {
-        this.recognitionRef.current.stop();
-        this.recognitionRef.current.onresult = null;
-        this.recognitionRef.current.onerror = null;
-        this.recognitionRef.current.onend = null;
-        this.recognitionRef.current = null;
-        console.log('Speech recognition stopped and cleared', { timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: 'Speech recognition stopped and cleared' });
-      } catch (error) {
-        console.error('Error stopping speech recognition:', { error: error.message, timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: `Error stopping speech recognition: ${error.message}` });
+        });
+        this.cleanupAfterStop();
+        return;
       }
-    }
 
-    if (this.mediaRecorder.current) {
-      try {
-        if (this.mediaRecorder.current.state !== 'inactive') {
-          console.log('MediaRecorder stop triggered', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
-          this.mediaRecorder.current.stop();
-          this.setState({ debugMessage: `MediaRecorder stop triggered, state: ${this.mediaRecorder.current.state}` });
+      console.log('Stop recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, showModal: this.state.showModal, interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
+    };
+
+    handleEscKey = (event) => {
+      if (event.key === 'Escape' && this.state.showModal && !this.isStoppingRef.current) {
+        event.stopPropagation();
+        event.preventDefault();
+        console.log('ESC key detected', { showModal: this.state.showModal, interimText: this.state.interimText, timestamp: new Date().toISOString() });
+        this.audioChunksRef.current = [];
+        this.isStartingRef.current = false;
+        this.isStoppingRef.current = false;
+        if (this.recordingTimeout) {
+          clearTimeout(this.recordingTimeout);
+          this.recordingTimeout = null;
         }
-        this.mediaRecorder.current.onstop = null;
-        this.mediaRecorder.current.ondataavailable = null;
-        this.mediaRecorder.current = null;
-        console.log('MediaRecorder fully cleared', { timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: 'MediaRecorder fully cleared' });
-      } catch (error) {
-        console.error('Error stopping MediaRecorder:', { error: error.message, timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: `Error stopping MediaRecorder: ${error.message}` });
-      }
-    }
-
-    this.audioChunksRef.current = [];
-    this.setState({ 
-      interimText: '', 
-      finalText: '', 
-      transcriptBuffer: [], 
-      isListening: false, 
-      showModal: false, 
-      canRespeak: true, 
-      debugMessage: 'Recording stopped, resources cleared' 
-    });
-    this.isStartingRef.current = false;
-    this.isStoppingRef.current = false;
-
-     // Restore focusability for non-modal elements
-    // this.trapFocusInModal(false);
-    console.log('Stop recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, showModal: this.state.showModal, timestamp: new Date().toISOString() });
-  };
-
-  resetRecording = () => {
-    console.log('resetRecording called', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, isListening: this.state.isListening, timestamp: new Date().toISOString() });
-    if (this.isStoppingRef.current || this.isStartingRef.current) {
-      console.log('Reset recording ignored: recording or cleanup in progress', { timestamp: new Date().toISOString() });
-      this.setState({ debugMessage: 'Reset recording ignored: recording or cleanup in progress' });
-      return;
-    }
-
-    this.clearAllTimeouts();
-    this.stopAllTracks();
-
-    if (this.recognitionRef.current) {
-      try {
-        this.recognitionRef.current.stop();
-        this.recognitionRef.current.onresult = null;
-        this.recognitionRef.current.onerror = null;
-        this.recognitionRef.current.onend = null;
-        this.recognitionRef.current = null;
-        // console.log('Speech recognition stopped and cleared for reset', { timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: 'Speech recognition stopped and cleared for reset' });
-      } catch (error) {
-        console.error('Error stopping speech recognition for reset:', { error: error.message, timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: `Error stopping speech recognition for reset: ${error.message}` });
-      }
-    }
-
-    if (this.mediaRecorder.current) {
-      try {
-        if (this.mediaRecorder.current.state !== 'inactive') {
-          // console.log('MediaRecorder stop triggered for reset', { state: this.mediaRecorder.current.state, timestamp: new Date().toISOString() });
-          this.mediaRecorder.current.stop();
-          this.setState({ debugMessage: `MediaRecorder stop triggered for reset, state: ${this.mediaRecorder.current.state}` });
+        if (this.speechRecognition.current) {
+          this.speechRecognition.current.stop();
+          this.speechRecognition.current = null;
         }
-        this.mediaRecorder.current.onstop = null;
-        this.mediaRecorder.current.ondataavailable = null;
-        this.mediaRecorder.current = null;
-        // console.log('MediaRecorder fully cleared for reset', { timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: 'MediaRecorder fully cleared for reset' });
-      } catch (error) {
-        console.error('Error stopping MediaRecorder for reset:', { error: error.message, timestamp: new Date().toISOString() });
-        this.setState({ debugMessage: `Error stopping MediaRecorder for reset: ${error.message}` });
+        this.handleStopRecording(true);
       }
-    }
+    };
 
-    this.audioChunksRef.current = [];
-    this.setState({ interimText: '', finalText: '', isListening: false, showModal: true, canRespeak: true, transcriptBuffer: [] });
-    // this.isStartingRef.current = false;
-    this.isStoppingRef.current = false;
-
-
-   
-    console.log('Reset recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, isListening: this.state.isListening, timestamp: new Date().toISOString() });
-  };
-
-  handleRespeak = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    console.log('Respeak initiated', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, isListening: this.state.isListening, timestamp: new Date().toISOString() });
-    this.setState({ debugMessage: 'Respeak initiated', interimText: '', finalText: '', canSearch:false, transcriptBuffer: [], isListening: false, canRespeak: false });
-    
-    this.resetRecording();
-    if (!this.isStoppingRef.current && !this.isStartingRef.current && !this.state.isListening) {
-      console.log('Starting new recording after respeak', { timestamp: new Date().toISOString() });
-      this.setState({ isListening: true, showModal: true, canRespeak: false });
-      this.handleAudioSearch(true);
-    } else {
-      console.log('Respeak ignored: recording or cleanup in progress', {
-        isStopping: this.isStoppingRef.current,
-        isStarting: this.isStartingRef.current,
-        isListening: this.state.isListening,
-        timestamp: new Date().toISOString(),
-      });
-      this.setState({ debugMessage: 'Respeak ignored: recording or cleanup in progress', canRespeak: true });
-    }
-  };
-
-  render() {
-
-    return (
-      <>
-        <button
-          type="button"
-          onClick={() => this.handleAudioSearch(true)}
-          className={`mic-btn border ${this.props.searchLabel} ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current ? 'bg-gray-300' : 'bg-white'} hover:bg-gray-100`}
-          disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current}
-          // disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
-          // disabled={this.isStartingRef.current || this.isStoppingRef.current}
-          // !this.state.canRespeak
-          aria-label="Voice search"
-        >
-          <FontAwesomeIcon icon={faMicrophone} />
-        </button>
-        {this.state.showModal && (
-          <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
-            <div className="modal-dialog modal-dialog-centered modal-lg" role="dialog">
-              <div className="mx-modal-content">
-                <div className="mx-modal-header">
-                  <h5 className="mx-modal-title" id="voiceSearchModalLabel">
-                    Voice Search
-                  </h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    data-dismiss="modal"
-                    onClick={this.handleStopRecording}
-                    aria-label="Close"
-                    disabled={this.isStoppingRef.current}
-                  ></button>
-                </div>
-                <div className="modal-body">
-                  <p className="text-gray-700 mb-4 text-base" id="voiceText" aria-label={this.state.finalText || this.state.interimText || 'Starting Voice Search'}>{this.state.finalText || this.state.interimText || 'Starting Voice Search'}</p>
-                  {process.env.NODE_ENV === 'developments' && this.state.debugMessage && (
-                    <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
-                  )}
-                </div>
-                <div className="mx-modal-footer btn-modal-search">
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      console.log('Search button clicked', { 
-                        finalText: this.state.finalText, 
-                        interimText: this.state.interimText, 
-                        transcriptBuffer: this.state.transcriptBuffer, 
-                        timestamp: new Date().toISOString(),
-                      });
-                      if (this.state.finalText && this.state.canSearch) {
-                        const searchText = this.state.finalText;
-                        this.props.onTextUpdate(searchText);
-                        // let url = this.props.exploreCourseUrl + `/search?text=${encodeURIComponent(searchText)}`;
-                        // window.location = url;
-                        // this.handleStopRecording();
-                        if (this.props.exploreCourseUrl) {
-                          const url = `${this.props.exploreCourseUrl}/search?text=${encodeURIComponent(searchText)}`;
-                          console.log('Redirecting to:', url, { timestamp: new Date().toISOString() });
-                          window.location = url;
-                        } else {
-                          console.log('No redirection, closing modal', { timestamp: new Date().toISOString() });
-                          this.handleStopRecording();
+    render() {
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => this.handleAudioSearch()}
+            className={`mic-btn border ${this.props.searchLabel} ${this.state.isListening ? 'bg-gray-300' : 'bg-white'} hover:bg-gray-100`}
+            disabled={this.state.isListening || this.isStartingRef.current}
+            aria-label="Voice search"
+          >
+            <FontAwesomeIcon icon={faMicrophone} />
+          </button>
+          {this.state.showModal && (
+            <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
+              <div className="modal-dialog modal-dialog-centered modal-lg" role="dialog">
+                <div className="mx-modal-content">
+                  <div className="mx-modal-header">
+                    <h5 className="mx-modal-title" id="voiceSearchModalLabel">
+                      Voice Search
+                    </h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => this.handleStopRecording(true)}
+                      aria-label="Close"
+                      disabled={this.isStoppingRef.current}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p className="text-gray-700 mb-4 text-base" id="voiceText" 
+                      // tabindex="0"
+                      // role="status"
+                      // aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+                      >
+                      {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start voice search.'}
+                    </p>
+                    {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
+                      <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
+                    )}
+                  </div>
+                  <div className="mx-modal-footer btn-modal-search">
+                    <button
+                      onClick={this.handleSpeak}
+                      className="btn"
+                      disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
+                      aria-label="Start recording"
+                    >
+                      Speak
+                    </button>
+                    <button
+                      onClick={() => this.handleStopRecording(false)}
+                      className="btn"
+                      disabled={!this.state.isListening || this.isStoppingRef.current}
+                      aria-label="Stop recording"
+                    >
+                      <FontAwesomeIcon icon={faStop} /> Stop
+                    </button>
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        console.log('Search button clicked', { 
+                          finalText: this.state.finalText, 
+                          interimText: this.state.interimText, 
+                          transcriptBuffer: this.state.transcriptBuffer, 
+                          timestamp: new Date().toISOString(),
+                        });
+                        if (this.state.finalText  && this.state.canSearch) {
+                          const searchText = this.state.finalText;
+                          this.props.onTextUpdate(searchText);
+                          if (this.props.exploreCourseUrl) {
+                            const url = `${this.props.exploreCourseUrl}/search?text=${encodeURIComponent(searchText)}`;
+                            console.log('Redirecting to:', url, { timestamp: new Date().toISOString() });
+                            window.location = url;
+                          } else {
+                            console.log('No redirection, closing modal', { timestamp: new Date().toISOString() });
+                            this.handleStopRecording(true);
+                          }
                         }
-                        
-                      }
-                    }}
-                    className="btn"
-                    // disabled={!this.state.finalText}
-                    disabled={!this.state.canSearch}
-                    aria-label="Search with transcribed text"
-                  >
-                    Search
-                  </button>
-                  <button
-                    onClick={this.handleRespeak}
-                    className="btn"
-                    disabled={!this.state.canRespeak}
-                    aria-label="Respeak"
-                  >
-                    Respeak
-                  </button>
-                  {/* <button
-                    type="button"
-                    onClick={this.handleStopRecording}
-                    className="btn"
-                    disabled={this.isStoppingRef.current}
-                    aria-label="Stop recording"
-                  >
-                    <FontAwesomeIcon icon={faStop} /> Stop
-                  </button> */}
+                      }}
+                      className="btn"
+                      disabled={!this.state.canSearch}
+                      aria-label="Search with transcribed text"
+                    >
+                      Search
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </>
-    );
+          )}
+        </>
+      );
+    }
   }
-}
 
-export default AudioSearch;
+  export default AudioSearch;
