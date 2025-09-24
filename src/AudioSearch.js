@@ -886,10 +886,8 @@ class AudioSearch extends Component {
                       tabindex="0"
                       aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                       >
-                        <span  aria-hidden="true">
-                         {/* <span {...(this.state.finalText ? { 'aria-hidden': 'true' } : {})}> */}
+                        <span>
                       {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
-
                         </span>
                     </p>
                     {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
