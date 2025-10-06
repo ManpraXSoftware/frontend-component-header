@@ -354,7 +354,7 @@ class Header extends Component {
   };
 
 
-  handleLangOptionsClick = (e) => {
+ handleLangOptionsClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -374,6 +374,9 @@ class Header extends Component {
         current_url.includes('explore-courses/#main') || 
         current_url === `${base_url}/explore-courses/` || 
         current_url === `${base_url}/explore-courses` || 
+        current_url === `${base_url}/explore-courses/dashboard/programs/` || 
+        current_url === `${base_url}/explore-courses/dashboard/` || 
+        current_url.startsWith(`${base_url}/explore-courses/dashboard/`) ||
         current_url.includes('explore-courses/search') ) {
         this.chngLang(e);
     }
