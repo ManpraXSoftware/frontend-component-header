@@ -597,11 +597,11 @@ class Header extends Component {
                 <div className="collapse navbar-collapse" id="navbarTogglerDemo03">
                   <ul className="navbar-nav mr-auto mt-2 mt-lg-0 menu_list">
                     <li className="nav-item">
-                      <a className={window.location.href.includes('/explore-courses/') ? 'active tab-nav-link' : 'tab-nav-link'} href="/explore-courses/" accessKey="c"
+                      <a className={window.location.href.includes('/explore-courses/') && !window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href="/explore-courses/" accessKey="c"
                         aria-current="page">Explore Courses</a>
                     </li>
                     <li className="nav-item">
-                      <a className={window.location.href.includes('dashboard/programs/') ? 'active tab-nav-link' : 'tab-nav-link'} href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} accessKey="s"
+                      <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} accessKey="s"
                         aria-current="page">
                         Dashboard
                       </a>
