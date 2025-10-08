@@ -601,7 +601,8 @@ class Header extends Component {
                         aria-current="page">Explore Courses</a>
                     </li>
                     <li className="nav-item">
-                      <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} accessKey="s"
+                      {/* <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} accessKey="s" */}
+                      <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href="/explore-courses/dashboard/programs" accessKey="s"
                         aria-current="page">
                         Dashboard
                       </a>
@@ -618,7 +619,6 @@ class Header extends Component {
                        
                       
                         <AudioSearch
-                            // currentLang={this.current_lang}
                             currentLang={Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: 'Lax' }) || 'en'}
                             onTextUpdate={(text) => this.setState({ setText: text })}
                             exploreCourseUrl={getConfig().EXPLORE_COURSE_URL[0]}
@@ -628,8 +628,6 @@ class Header extends Component {
                         <input type="submit" value="" className="submit" aria-label="Search" />
                         
                       </div>
-
-
 
                     </form>
                   </div>
@@ -662,7 +660,7 @@ class Header extends Component {
                   <CaretDropDownIcon/>
                 </div>
                 <div className="dropdown-user-menu hidden" aria-label="More Options" role="menu" id="user-menu" tabIndex={-1}>
-                  <div className="mobile-nav-item dropdown-item dropdown-nav-item" id="dashboard-navbar"><a href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} role="menuitem">Dashboard</a></div>
+                  <div className="mobile-nav-item dropdown-item dropdown-nav-item" id="dashboard-navbar"><a href="/explore-courses/dashboard/programs" role="menuitem">Dashboard</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item" ><a id="user-profiler-redirect" href="" role="menuitem">Profile</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().ACCOUNT_SETTINGS_URL} role="menuitem">Account</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().LOGOUT_URL} role="menuitem">Sign Out</a></div>
