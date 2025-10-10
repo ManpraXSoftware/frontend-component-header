@@ -17,6 +17,7 @@ class AudioSearch extends Component {
       transcriptBuffer: [],
       modalMessage: '',
       recordingStartTime: null,
+      announcement: ''
     };
 
     this.mediaRecorder = React.createRef();
@@ -70,6 +71,7 @@ class AudioSearch extends Component {
           this.nonModalNodes.push(node);
         }
       }
+      // this.setState({ announcement: 'MX Voice search dialog open' });
 
       const firstFocusable = document.getElementById('voiceText');
       if (firstFocusable) {
@@ -176,9 +178,12 @@ class AudioSearch extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (this.state.showModal && !prevState.showModal) {
+      // this.setState({ announcement: 'MX Voice search dialog open' });
+
       this.trapFocusInModal(true);
     } else if (!this.state.showModal && prevState.showModal) {
       this.trapFocusInModal(false);
+      this.setState({ announcement: 'Voice search dialog closed' });
     }
     if (this.state.finalText !== prevState.finalText || this.state.interimText !== prevState.interimText) {
       this.forceUpdate();
@@ -411,6 +416,7 @@ class AudioSearch extends Component {
         this.setState({ debugMessage: 'Audio search or cleanup in progress, ignoring', canRespeak: true });
         return;
       }
+      // this.setState({ announcement: 'MX Voice search dialog open' });
 
       console.log('handleAudioSearch started', { currentLang: this.props.currentLang, browser: navigator.userAgent, timestamp: new Date().toISOString() });
 
@@ -855,6 +861,10 @@ class AudioSearch extends Component {
     render() {
       return (
         <>
+          {/* New: Screen reader announcement region */}
+          <div aria-live="polite" role="status" className="sr-only">
+            {this.state.announcement}
+          </div>
           <button
             type="button"
             onClick={() => this.handleAudioSearch()}
@@ -866,11 +876,19 @@ class AudioSearch extends Component {
           </button>
           {this.state.showModal && (
             <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
-              <div className="modal-dialog modal-dialog-centered modal-lg" role="dialog">
+              <div className="modal-dialog modal-dialog-centered modal-lg" >
+
+                   <div aria-live="polite" role="status" className="sr-only">
+                       Voice search dialog Open
+                </div>
+
                 <div className="mx-modal-content">
                   <div className="mx-modal-header">
-                    <h5 className="mx-modal-title" id="voiceSearchModalLabel">
+                    <h5 className="mx-modal-title" id="voiceSearchModalLabel"
+                    // aria-label="MX Voice search dialog open"
+                    >
                       Voice Search
+                      
                     </h5>
                     <button
                       type="button"
