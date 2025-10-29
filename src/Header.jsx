@@ -17,19 +17,24 @@ class Header extends Component {
     this.state = {
       darkLanguages: [],
       languages: [],
-      lang_key:'',
+      lang_key: '',
       setText: '',
       isMobileMenuOpen: false, 
       resumeCourseUrl: null,
       profileUrl: '',
-
     };
 
     this.dropdownRef = React.createRef();
-
+    this.nonDropdownNodes = []; // Track disabled non-dropdown nodes
+    this.focusableSelector = `
+      a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), 
+      textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"], 
+      [tabindex="0"], area[href], details, summary, iframe, object, embed,
+      li[data-testid="breadcrumb-item"], li[data-testid="breadcrumb-item"] a, 
+      li[data-testid="breadcrumb-item"] button, li[data-testid="breadcrumb-item"] [tabindex],
+      div[class*="sequence-navigation-tabs-container"], div[class*="sequence-navigation-tabs d-flex flex-grow-1"]
+    `.trim(); // Focusable selector for trap
   }
-
-  
 
   componentDidMount() {
     var darkLang = []
@@ -41,11 +46,6 @@ class Header extends Component {
       return; // Stop further execution
     }
 
-  // console.log("site domain", getConfig().SITE_DOMAIN,getConfig().EXPLORE_COURSE_URL )
-
-    // const search_query = new URLSearchParams(location.search).get("text");
-    // this.setState({ setText: search_query || '' }); // Fallback to an empty string
-    
     if (!this.state.setText) {
       const search_query = new URLSearchParams(location.search).get("text");
       this.setState({ setText: search_query || '' });
@@ -58,9 +58,9 @@ class Header extends Component {
     const jf = document.createElement('script');
 
 
-  const mx_localizekey = Array.isArray(getConfig().MX_LOCALIZEKEY) 
-  ? getConfig().MX_LOCALIZEKEY[0] 
-  : getConfig().MX_LOCALIZEKEY;
+    const mx_localizekey = Array.isArray(getConfig().MX_LOCALIZEKEY) 
+    ? getConfig().MX_LOCALIZEKEY[0] 
+    : getConfig().MX_LOCALIZEKEY;
 
 
     const show_user_way = getConfig().SHOW_USER_WAY[0];
@@ -124,10 +124,7 @@ class Header extends Component {
             else if (e.code == "en") {
               lang_name = e.name + "(English)"
             } else if (e.code == "ta-IN") {
-              // lang_name = e.name + "(Tamil (India))"
               lang_name = "தமிழ்(Tamil)"
-              // const cleanedName = e.name.replace(/\s*\(India\)/, "");
-              // lang_name = cleanedName + "(Tamil)"
             } else if (e.code == "or") {
               lang_name = e.name + "(Odia)"
             } else if (e.code == "ml-IN" || e.code == "ml") {
@@ -174,9 +171,6 @@ class Header extends Component {
             } else if (code == "en") {
               name = name + "(English)"
             } else if (code == "ta-IN") {
-              // name = name + "(Tamil (India))"
-              // const cleanedName = name.replace(/\s*\(India\)/, "");
-              // name = cleanedName + "(Tamil)"
               name = "தமிழ்(Tamil)"
             } else if (code == "or") {
               name = name + "(Odia)"
@@ -211,22 +205,6 @@ class Header extends Component {
           }
         }
       })
-
-
-      // Add #main in iframe URL 
-
-    // const iframe = document.getElementById('unit-iframe');
-    // const iframeSrc = iframe?.getAttribute('src');
-
-    // if (iframe && iframeSrc) {
-    //   const parentUrlHash = window.location.hash;
-
-    //   if (parentUrlHash === '#main' && !iframeSrc.includes('#main')) {
-    //     const updatedSrc = `${iframeSrc}#main`;
-    //     iframe.setAttribute('src', updatedSrc);
-    //   }
-    // }
-      
     };
     
     
@@ -243,54 +221,100 @@ class Header extends Component {
     let current_url = window.location.href;
     if (current_url.includes('learning/course/') ) {
       $(".myLang").hide();
-      //  LTS WAT Code START : DO NOT REMOVE or MODIFY 
-      //  Create and append the LTS script
-      // const ltsScript = document.createElement('script');
-      // ltsScript.src = `https://lts.lb.gcloud.letstalksign.org/script/lts-load-lms-V1-OB.js?auth_api=${getConfig().LMS_BASE_URL}/letstalksign/authenticate`;
-      // ltsScript.async = true;
-      // document.body.appendChild(ltsScript);
-      //  LTS WAT Code END : DO NOT REMOVE or MODIFY 
-    
     }
-
-    // if (document.readyState === 'complete') {
-    //   console.log('DOM and all resources have fully loaded');
-    // } else if (document.readyState === 'interactive') {
-    //     console.log('DOM fully loaded and parsed, but resources may still be loading');
-
-    // } else {
-    //     console.log('DOM is still loading');
-
-    // }
 
     // Add document click listener
     document.addEventListener('click', this.handleClickOutside);
     document.addEventListener('keydown', this.handleKeyDown);
-
-
-
-    // Cleanup for modal
-   // Add ESC key listener
-    // this.handleEscKey = (event) => {
-    //   if (event.key === 'Escape' && this.state.showModal && !this.isStoppingRef.current) {
-    //     event.stopPropagation();
-    //     event.preventDefault();
-    //     console.log('ESC key event triggered, showModal:', this.state.showModal);
-    //     this.handleStopRecording();
-    //   }
-    // };
-    // document.addEventListener('keydown', this.handleEscKey);
-
-
-    // document.addEventListener('keydown', this.handleEscKey, { capture: true });
-
   }
+
   componentWillUnmount() {
     document.removeEventListener('click', this.handleClickOutside);
     document.removeEventListener('keydown', this.handleKeyDown);
   }
 
+  // Focus trap for user dropdown (adapted from AudioSearch logic: disable/restore, no wrapping)
+  trapFocusInDropdown = (shouldTrap = true) => {
+    const dropdown = document.getElementById('user-menu');
+    if (!dropdown) return;
 
+    if (shouldTrap) {
+      // Collect and disable non-dropdown focusables (matching your original logic)
+      const dropdownNodes = Array.from(dropdown.querySelectorAll('*'));
+      const nonDropdownNodes = Array.from(document.querySelectorAll(`body *:not(#user-menu):not(#user-menu *)`)).filter(node => node.matches(this.focusableSelector));
+
+      this.nonDropdownNodes = [];
+      for (let i = 0; i < nonDropdownNodes.length; i++) {
+        const node = nonDropdownNodes[i];
+        if (!dropdownNodes.includes(node)) {
+          node._prevTabindex = node.hasAttribute('tabindex') ? node.getAttribute('tabindex') : 'none';
+          node.setAttribute('tabindex', '-1');
+          node.style.outline = 'none';
+          this.nonDropdownNodes.push(node);
+        }
+      }
+
+      // Focus first focusable in dropdown
+      const firstFocusable = document.querySelector('#user-menu a[role="menuitem"]'); // First menu item
+      if (firstFocusable) {
+        firstFocusable.focus();
+      }
+
+      console.log('Dropdown focus trap applied', { 
+        dropdownNodes: dropdownNodes.length, 
+        nonDropdownNodes: nonDropdownNodes.length,
+        timestamp: new Date().toISOString() 
+      });
+    } else if (this.nonDropdownNodes.length > 0) {
+      // Restore non-dropdown focusables (matching your original logic)
+      const failedRestorations = [];
+      for (let i = 0; i < this.nonDropdownNodes.length; i++) {
+        const node = this.nonDropdownNodes[i];
+        if (node._prevTabindex !== 'none') {
+          node.setAttribute('tabindex', node._prevTabindex);
+        } else {
+          node.removeAttribute('tabindex');
+        }
+        node.style.outline = '';
+        if (node.hasAttribute('tabindex') && node.getAttribute('tabindex') === '-1') {
+          failedRestorations.push({ tag: node.tagName, id: node.id, class: node.className });
+        }
+        node._prevTabindex = null;
+      }
+
+      console.log('Dropdown tabindex restored', {
+        restoredNodes: this.nonDropdownNodes.length,
+        failedRestorations,
+        timestamp: new Date().toISOString(),
+      });
+
+      // Return focus to trigger (user image div)
+      const toggleButton = document.querySelector('.user_custom_login');
+      if (toggleButton) {
+        toggleButton.focus();
+        console.log('Focused user image after dropdown close', {
+          tag: toggleButton.tagName,
+          id: toggleButton.id,
+          class: toggleButton.className,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        // Fallback to first page focusable
+        const firstPageFocusable = document.querySelector(this.focusableSelector);
+        if (firstPageFocusable) {
+          firstPageFocusable.focus();
+          console.log('Focused first page element after dropdown close', {
+            tag: firstPageFocusable.tagName,
+            id: firstPageFocusable.id,
+            class: firstPageFocusable.className,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
+      this.nonDropdownNodes = [];
+    }
+  };
 
   handleSearchClick = (e) => {
     e.preventDefault();
@@ -302,14 +326,12 @@ class Header extends Component {
     }
   };
 
-
   // method to toggle mobile menu
   toggleMobileMenu = () => {
     this.setState((prevState) => ({
       isMobileMenuOpen: !prevState.isMobileMenuOpen,
     }));
   };
-
 
   handleClickOutside = (event) => {
     const userMenu = document.getElementById("user-menu");
@@ -320,8 +342,12 @@ class Header extends Component {
     if (userMenu && !userMenu.classList.contains("hidden") && 
         !event.target.closest('.secondary') &&
         !event.target.closest('#user-menu')) {
+      const isOpen = !userMenu.classList.contains("hidden"); // Before close
       userMenu.classList.add("hidden");
       toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", "false"));
+      if (isOpen) {
+        this.trapFocusInDropdown(false); // Release trap on close
+      }
     }
 
     if (this.state.isMobileMenuOpen && mobileMenu && 
@@ -340,10 +366,14 @@ class Header extends Component {
 
     if (event.key === 'Escape') {
       if (userMenu && !userMenu.classList.contains("hidden")) {
+        const isOpen = !userMenu.classList.contains("hidden"); // Before close
         userMenu.classList.add("hidden");
         toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", "false"));
-        const toggleButton = document.querySelector(".toggle-user-dropdown");
+        const toggleButton = document.querySelector(".user_custom_login");
         if (toggleButton) toggleButton.focus();
+        if (isOpen) {
+          this.trapFocusInDropdown(false); // Release trap on close
+        }
       }
       if (this.state.isMobileMenuOpen && mobileMenu) {
         this.setState({ isMobileMenuOpen: false });
@@ -353,46 +383,42 @@ class Header extends Component {
     }
   };
 
-
- handleLangOptionsClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const selectedLang = e.target.value; // Get the selected language code
-    const currentLang = Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: "Lax" });
-
-    // If the selected language is the same as the current language, do nothing
-    if (selectedLang === currentLang) {
-      return;
-    }
-
-    let current_url = window.location.href;
-    let base_url = window.location.origin;
-    let text = "Do you want to change the language? You will be redirected to the 'explore courses' page";
-
-    if (current_url.includes('explore-courses/program-courses') || 
-        current_url.includes('explore-courses/#main') || 
-        current_url === `${base_url}/explore-courses/` || 
-        current_url === `${base_url}/explore-courses` || 
-        current_url === `${base_url}/explore-courses/dashboard/programs/` || 
-        current_url === `${base_url}/explore-courses/dashboard/` || 
-        current_url.startsWith(`${base_url}/explore-courses/dashboard/`) ||
-        current_url.includes('explore-courses/search') ) {
-        this.chngLang(e);
-    }
-   
-
-    else {
-      // Use a custom confirmation dialog
-      this.showCustomConfirmDialog(text, () => {
+  handleLangOptionsClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+  
+      const selectedLang = e.target.value; // Get the selected language code
+      const currentLang = Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: "Lax" });
+  
+      // If the selected language is the same as the current language, do nothing
+      if (selectedLang === currentLang) {
+        return;
+      }
+  
+      let current_url = window.location.href;
+      let base_url = window.location.origin;
+      let text = "Do you want to change the language? You will be redirected to the 'explore courses' page";
+  
+      if (current_url.includes('explore-courses/program-courses') || 
+          current_url.includes('explore-courses/#main') || 
+          current_url === `${base_url}/explore-courses/` || 
+          current_url === `${base_url}/explore-courses` || 
+          current_url === `${base_url}/explore-courses/dashboard/programs/` || 
+          current_url === `${base_url}/explore-courses/dashboard/` || 
+          current_url.startsWith(`${base_url}/explore-courses/dashboard/`) ||
+          current_url.includes('explore-courses/search') ) {
           this.chngLang(e);
-      }, () => {
-          const langSelect = document.getElementById('langOptions');
-          langSelect.value = currentLang;
-      });
-  }
-  }
-
+      }
+      else {
+        // Use a custom confirmation dialog
+        this.showCustomConfirmDialog(text, () => {
+            this.chngLang(e);
+        }, () => {
+            const langSelect = document.getElementById('langOptions');
+            langSelect.value = currentLang;
+        });
+    }
+    }
 
     // Custom confirmation dialog
     showCustomConfirmDialog = (message, onConfirm, onCancel) => {
@@ -551,25 +577,27 @@ class Header extends Component {
 
   }
 
-
-    //Search
-    handleSearchClick = (e) => {
-      e.preventDefault();
-      let searchData =  $('.enter').val();
-      if (searchData != ""){
-        let url =  getConfig().EXPLORE_COURSE_URL[0] + `/search?text=${searchData}`;
-        window.location = url;  
-        $('.enter').val('');
+  // Updated toggle handler for dropdown open/close with focus trap
+  handleDropdownToggle = (e) => {
+    e.stopPropagation(); // Prevent bubbling
+    const userMenu = document.getElementById("user-menu");
+    const isHidden = userMenu.classList.contains("hidden");
+    const willOpen = isHidden;
+    userMenu.classList.toggle("hidden");
+    const toggleButtons = document.querySelectorAll(".toggle-user-dropdown");
+    toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", willOpen ? "true" : "false"));
+    // alert(willOpen)
+    if (willOpen) {
+      // Defer trap to after class toggle settles
+      // alert("h")
+      setTimeout(() => this.trapFocusInDropdown(true), 0);
+    } else {
+      this.trapFocusInDropdown(false);
     }
-
-  }
-
+  };
 
   render() {
     return (<>
-      {/* <div className="uai userway_dark" id="userwayAccessibilityIcon" aria-label="accessibility menu" role="button" tabIndex={1} >
-        <img alt="Accessibility Widget" src={accessibilityIcon} className="ui_w" width="35" height="35" />
-      </div> */}
       <a className="stmc" href={window.location.href.includes('/learning/course/') ? '#mx-main' : '#main'}>Skip to main content</a>
 
       <header className="global-header" id="nett-head">
@@ -601,7 +629,6 @@ class Header extends Component {
                         aria-current="page">Explore Courses</a>
                     </li>
                     <li className="nav-item">
-                      {/* <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href={getConfig().LMS_BASE_URL + '/dashboard/programs/'} accessKey="s" */}
                       <a className={window.location.href.includes('/explore-courses/dashboard/') ? 'active tab-nav-link' : 'tab-nav-link'} href="/explore-courses/dashboard/programs" accessKey="s"
                         aria-current="page">
                         Dashboard
@@ -613,11 +640,10 @@ class Header extends Component {
                       <div className="form-group" id="headerSearchWrap" role='search'>
                         <input type="text" id="heardeSearch" value={this.state.setText} 
                         onChange={(e) => {
-                          this.setState({ setText: e.target.value }); // Update state correctly
+                          this.setState({ setText: e.target.value });
                         }}
                         name="Search for topic of interest" placeholder="Search for topic of interest" className="enter" />
                        
-                      
                         <AudioSearch
                             currentLang={Cookies.get('lang', { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: 'Lax' }) || 'en'}
                             onTextUpdate={(text) => this.setState({ setText: text })}
@@ -628,26 +654,26 @@ class Header extends Component {
                         <input type="submit" value="" className="submit" aria-label="Search" />
                         
                       </div>
-
                     </form>
                   </div>
                 </div>
               </nav>
             </div>
-            {/* <div className="secondary" onClick={(e) => { document.getElementById("user-menu").classList.toggle("hidden") }}> */}
-
             <div 
               className="secondary" 
-              onClick={(e) => { 
-                const userMenu = document.getElementById("user-menu");
-                const isHidden = userMenu.classList.contains("hidden");
-                userMenu.classList.toggle("hidden");
-                const toggleButtons = document.querySelectorAll(".toggle-user-dropdown");
-                toggleButtons.forEach((btn) => btn.setAttribute("aria-expanded", !isHidden));
-              }}
+              onClick={this.handleDropdownToggle}
             >
-  
-              <div className="nav-item hidden-mobile user_custom_login toggle-user-dropdown" aria-label="User Account Options" aria-expanded="false" tabIndex={0} aria-controls="user-menu">
+              <div className="nav-item hidden-mobile user_custom_login toggle-user-dropdown" 
+                aria-label="User Account Options"
+                aria-expanded="false" tabIndex={0} aria-controls="user-menu"
+                onClick={this.handleDropdownToggle} 
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.handleDropdownToggle(e);
+                  }
+                }}
+               >
                 <span className="menu-title" aria-hidden="true">
                   <img className="user-image-frame" id="profileimageid" src="" alt="" />
                   <span className="sr-only" aria-disabled="true">Dashboard for:</span>
@@ -655,16 +681,22 @@ class Header extends Component {
                 </span>
               </div>
               <div className="nav-item hidden-mobile nav-item-dropdown">
-                <div className="toggle-user-dropdown" role="button" aria-label="Options Menu" aria-expanded="false" tabIndex={-1} aria-controls="user-menu">
-                  {/* <span className="fa fa-caret-down" aria-hidden="true"></span> */}
+                <div className="toggle-user-dropdown" role="button" aria-label="Options Menu" aria-expanded="false" tabIndex={-1} aria-controls="user-menu" 
+                  onClick={this.handleDropdownToggle} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      this.handleDropdownToggle(e);
+                    }
+                  }}
+                >
                   <CaretDropDownIcon/>
                 </div>
-                <div className="dropdown-user-menu hidden" aria-label="More Options" role="menu" id="user-menu" tabIndex={-1}>
+                <div className="dropdown-user-menu hidden" aria-label="More Options" role="menu" id="user-menu" tabIndex="-1">
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item" id="dashboard-navbar"><a href="/explore-courses/dashboard/programs" role="menuitem">Dashboard</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item" ><a id="user-profiler-redirect" href="" role="menuitem">Profile</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().ACCOUNT_SETTINGS_URL} role="menuitem">Account</a></div>
                   <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().LOGOUT_URL} role="menuitem">Sign Out</a></div>
-               
                 </div>
               </div>
             </div>
