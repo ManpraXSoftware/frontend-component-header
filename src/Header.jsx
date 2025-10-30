@@ -381,6 +381,14 @@ class Header extends Component {
         hamburgerButton.focus();
       }
     }
+
+    if (event.altKey && event.code === 'KeyC') {
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.href = '/explore-courses/';
+        return;
+      }
+
   };
 
   handleLangOptionsClick = (e) => {
