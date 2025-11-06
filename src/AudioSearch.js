@@ -919,18 +919,19 @@ class AudioSearch extends Component {
                   </div>
 
                   <div className="modal-body">
-                    {/* <p className="text-gray-700 mb-4 text-base" id="voiceText" 
+                    <p className="text-gray-700 mb-4 text-base" id="voiceText" 
                       tabindex="0"
+                      // aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                       aria-labelledby="voiceLable"
                       >
                         <span id="voiceLable">
                       {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                         </span>
-                    </p> */}
+                    </p>
 
 
 
-                    <p 
+                    {/* <p 
                       className="text-gray-700 mb-4 text-base" 
                       id="voiceText" 
                       tabindex="0"
@@ -939,7 +940,7 @@ class AudioSearch extends Component {
                       <span aria-hidden="true">
                         {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                       </span>
-                    </p>
+                    </p> */}
 
                     {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
                       <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
