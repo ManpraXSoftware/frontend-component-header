@@ -182,7 +182,11 @@ class AudioSearch extends Component {
   componentDidUpdate(prevProps, prevState) {
     if (this.state.showModal && !prevState.showModal) {
 
+      // this.trapFocusInModal(true);
+      this.setState({ announcement: 'Voice search dialog open' }, () => {
       this.trapFocusInModal(true);
+    });
+
     } else if (!this.state.showModal && prevState.showModal) {
       this.trapFocusInModal(false);
       this.setState({ announcement: 'Voice search dialog closed' });
@@ -897,9 +901,9 @@ class AudioSearch extends Component {
             <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
               <div className="modal-dialog modal-dialog-centered modal-lg" >
 
-                   <div aria-live="polite" role="status" className="sr-only">
+                   {/* <div aria-live="polite" role="status" className="sr-only">
                        Voice search dialog Open
-                </div>
+                </div> */}
 
                 <div className="mx-modal-content">
                   <div className="mx-modal-header">
