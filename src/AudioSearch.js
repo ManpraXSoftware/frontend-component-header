@@ -55,8 +55,8 @@ class AudioSearch extends Component {
         li[data-testid="breadcrumb-item"] a, 
         li[data-testid="breadcrumb-item"] button, 
         li[data-testid="breadcrumb-item"] [tabindex],
-        div[className="sequence-navigation-tabs-container"],
-        div[className="sequence-navigation-tabs d-flex flex-grow-1"]
+       div.sequence-navigation-tabs-container,
+       div.sequence-navigation-tabs.d-flex.flex-grow-1
       `;
       
       const nonModalNodes = Array.from(document.querySelectorAll(`body *:not(.voice-modal):not(.voice-modal *)`)).filter(node => node.matches(focusableSelector));
@@ -78,6 +78,9 @@ class AudioSearch extends Component {
         // firstFocusable.setAttribute('tabindex', '0');
         firstFocusable.focus();
       }
+
+
+      
 
       const micButton = document.querySelector('button.mic-btn');
       if (micButton && !micButton.disabled) {
@@ -178,7 +181,6 @@ class AudioSearch extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (this.state.showModal && !prevState.showModal) {
-      // this.setState({ announcement: 'MX Voice search dialog open' });
 
       this.trapFocusInModal(true);
     } else if (!this.state.showModal && prevState.showModal) {
@@ -431,6 +433,7 @@ class AudioSearch extends Component {
         transcriptBuffer: [],
         modalMessage: 'Click Speak to start speaking, then click Stop after you finish.',
         recordingStartTime: null,
+        announcement: '',
       });
     };
 
@@ -835,6 +838,22 @@ class AudioSearch extends Component {
         return;
       }
 
+      if (closeModal) {
+        this.setState({
+          showModal: false,
+          announcement: 'Voice search dialog closed',
+        }, () => {
+          console.log('Modal closed on cancel', { timestamp: new Date().toISOString() });
+          // const voiceText = document.getElementById('voiceText');
+          // if (voiceText) {
+          //   voiceText.setAttribute('aria-live', 'off');
+          // }
+        });
+        this.cleanupAfterStop();
+        // this.isStoppingRef.current = false;
+        return;  // Exit early, skip API processing
+      }
+
       console.log('Stop recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, showModal: this.state.showModal, interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
     };
 
@@ -900,20 +919,35 @@ class AudioSearch extends Component {
                   </div>
 
                   <div className="modal-body">
-                    <p className="text-gray-700 mb-4 text-base" id="voiceText" 
+                    {/* <p className="text-gray-700 mb-4 text-base" id="voiceText" 
                       tabindex="0"
-                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
+                      aria-labelledby="voiceLable"
                       >
-                        <span>
+                        <span id="voiceLable">
                       {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                         </span>
+                    </p> */}
+
+
+
+                    <p 
+                      className="text-gray-700 mb-4 text-base" 
+                      id="voiceText" 
+                      tabindex="0"
+                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
+                    >
+                      <span aria-hidden="true">
+                        {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
+                      </span>
                     </p>
+
                     {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
                       <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
                     )}
                   </div>
                   <div className="mx-modal-footer btn-modal-search">
                     <button
+                      id="speakButton"
                       onClick={this.handleSpeak}
                       className="btn"
                       disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
