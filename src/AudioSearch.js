@@ -278,6 +278,7 @@ class AudioSearch extends Component {
           method: 'POST',
           body: formData,
           signal: this.abortControllerRef.current.signal,
+          credentials: 'include',
         });
         console.log('Transcription API response received', { status: response.status, headers: Object.fromEntries(response.headers.entries()), sessionId: currentSessionId, timestamp: new Date().toISOString() });
         const data = await response.json();
