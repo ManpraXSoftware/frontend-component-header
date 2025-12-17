@@ -65,7 +65,9 @@
     "jest-environment-jsdom": "^29.7.0",
     "react-responsive": "8.2.0",
     "react-transition-group": "4.4.5",
-    "universal-cookie": "^7.2.0"
+    "universal-cookie": "^7.2.0",
+    "focus-trap-react": "^9.0.2"
+
   },
   "peerDependencies": {
     "@edx/frontend-platform": "^7.0.0 || ^8.0.0",
