@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrophone, faStop } from '@fortawesome/free-solid-svg-icons';
 import { getConfig } from '@edx/frontend-platform';
+import FocusTrap from 'focus-trap-react';
 
 class AudioSearch extends Component {
   constructor(props) {
@@ -38,168 +39,17 @@ class AudioSearch extends Component {
     this.abortControllerRef.current = null;
   }
 
-  trapFocusInModal = (shouldTrap = true) => {
-    const modal = document.querySelector('.voice-modal');
-    if (shouldTrap && modal) {
-      const modalNodes = Array.from(modal.querySelectorAll('*'));
-      const focusableSelector = `
-        a[href], 
-        button:not([disabled]), 
-        input:not([disabled]), 
-        select:not([disabled]), 
-        textarea:not([disabled]), 
-        [tabindex]:not([tabindex="-1"]), 
-        [contenteditable="true"], 
-        area[href], 
-        details, 
-        summary, 
-        iframe, 
-        object, 
-        embed, 
-        li[data-testid="breadcrumb-item"], 
-        li[data-testid="breadcrumb-item"] a, 
-        li[data-testid="breadcrumb-item"] button, 
-        li[data-testid="breadcrumb-item"] [tabindex],
-       div.sequence-navigation-tabs-container,
-       div.sequence-navigation-tabs.d-flex.flex-grow-1
-      `;
-      
-      const nonModalNodes = Array.from(document.querySelectorAll(`body *:not(.voice-modal):not(.voice-modal *)`)).filter(node => node.matches(focusableSelector));
-
-      this.nonModalNodes = [];
-      for (let i = 0; i < nonModalNodes.length; i++) {
-        const node = nonModalNodes[i];
-        if (!modalNodes.includes(node)) {
-          node._prevTabindex = node.hasAttribute('tabindex') ? node.getAttribute('tabindex') : 'none';
-          node.setAttribute('tabindex', '-1');
-          node.style.outline = 'none';
-          this.nonModalNodes.push(node);
-        }
-      }
-    //   if (document.activeElement) document.activeElement.blur();
-    //   window.focus();  // Ensures document is active before modal trap
-    //   document.body.style.overflow = 'hidden';
-    // window.scrollTo(0, 0);
-      // this.setState({ announcement: 'MX Voice search dialog open' });
-
-      const firstFocusable = document.getElementById('voiceText');
-      if (firstFocusable) {
-        // firstFocusable.setAttribute('tabindex', '0');
-        firstFocusable.focus();
-      }
-
-
-      
-
-      const micButton = document.querySelector('button.mic-btn');
-      if (micButton && !micButton.disabled) {
-        micButton.disabled = true;
-      }
-
-      const headerSearchWrap = document.getElementById('headerSearchWrap');
-      if (headerSearchWrap) {
-        headerSearchWrap.classList.add('remove_focus');
-      }
-
-      console.log('Focus trap applied for Voice Search modal', {
-        modalNodes: modalNodes.length,
-        nonModalNodes: nonModalNodes.length,
-        timestamp: new Date().toISOString(),
-      });
-    } else if (!shouldTrap && this.nonModalNodes.length > 0) {
-      const failedRestorations = [];
-      for (let i = 0; i < this.nonModalNodes.length; i++) {
-        const node = this.nonModalNodes[i];
-        if (node._prevTabindex !== 'none') {
-          node.setAttribute('tabindex', node._prevTabindex);
-        } else {
-          node.removeAttribute('tabindex');
-        }
-        node.style.outline = '';
-        if (node.hasAttribute('tabindex') && node.getAttribute('tabindex') === '-1') {
-          failedRestorations.push({ tag: node.tagName, id: node.id, class: node.className });
-        }
-        node._prevTabindex = null;
-      }
-
-      console.log('Tabindex restored for non-modal elements', {
-        restoredNodes: this.nonModalNodes.length,
-        failedRestorations,
-        timestamp: new Date().toISOString(),
-      });
-
-      const micButton = document.querySelector('button.mic-btn');
-      if (micButton) {
-        if (micButton.disabled) {
-          micButton.disabled = false;
-          console.log('Microphone button enabled', {
-            tag: micButton.tagName,
-            class: micButton.className,
-            timestamp: new Date().toISOString(),
-          });
-        }
-
-        const headerSearchWrap = document.getElementById('headerSearchWrap');
-        if (headerSearchWrap) {
-          headerSearchWrap.classList.remove('remove_focus');
-        }
-        
-        micButton.focus();
-        console.log('Focused microphone button after modal close', {
-          tag: micButton.tagName,
-          id: micButton.id,
-          class: micButton.className,
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        const focusableSelector = `
-          a[href], 
-          button:not([disabled]), 
-          input:not([disabled]), 
-          select:not([disabled]), 
-          textarea:not([disabled]), 
-          [tabindex]:not([tabindex="-1"]), 
-          [contenteditable="true"], 
-          area[href], 
-          details, 
-          summary, 
-          iframe, 
-          object, 
-          embed, 
-          li[data-testid="breadcrumb-item"], 
-          li[data-testid="breadcrumb-item"] a, 
-          li[data-testid="breadcrumb-item"] button, 
-          li[data-testid="breadcrumb-item"] [tabindex]
-        `;
-        
-        const firstPageFocusable = document.querySelector(focusableSelector);
-        if (firstPageFocusable) {
-          firstPageFocusable.focus();
-          console.log('Focused first page element after modal close', {
-            tag: firstPageFocusable.tagName,
-            id: firstPageFocusable.id,
-            class: firstPageFocusable.className,
-            timestamp: new Date().toISOString(),
-          });
-        }
-      }
-
-      this.nonModalNodes = [];
-    }
-  };
+  
 
   componentDidUpdate(prevProps, prevState) {
+    
     if (this.state.showModal && !prevState.showModal) {
-
-      // this.trapFocusInModal(true);
-      this.setState({ announcement: 'Voice search dialog open' }, () => {
-      this.trapFocusInModal(true);
-    });
-
-    } else if (!this.state.showModal && prevState.showModal) {
-      this.trapFocusInModal(false);
+ 
+    }
+    else if (!this.state.showModal && prevState.showModal) {
       this.setState({ announcement: 'Voice search dialog closed' });
     }
+
     if (this.state.finalText !== prevState.finalText || this.state.interimText !== prevState.interimText) {
       this.forceUpdate();
       console.log('Text updated, forcing re-render', { finalText: this.state.finalText, interimText: this.state.interimText, timestamp: new Date().toISOString() });
@@ -302,18 +152,10 @@ class AudioSearch extends Component {
               console.log('State updated with transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
               const voiceText = document.getElementById('voiceText');
               if (voiceText) {
-                // voiceText.setAttribute('aria-live', 'polite');
-                // voiceText.setAttribute('tabindex', '0');
-                      // role="status"
-                // voiceText.setAttribute('aria-live', 'assertive');
-                // voiceText.setAttribute('role', 'status');
+            
 
                 voiceText.focus();
-                // setTimeout(() => {
-                //   if (voiceText) {
-                //     voiceText.setAttribute('aria-live', 'polite');
-                //   }
-                // }, 2000);
+           
               }
               this.forceUpdate();
             });
@@ -469,22 +311,12 @@ class AudioSearch extends Component {
 
       console.log('handleAudioSearch started', { currentLang: this.props.currentLang, browser: navigator.userAgent, timestamp: new Date().toISOString() });
 
-      // this.setState({
-      //   showModal: true,
-      //   isListening: false,
-      //   interimText: '',
-      //   finalText: '',
-      //   debugMessage: 'Opening voice search modal',
-      //   canRespeak: true,
-      //   canSearch: false,
-      //   transcriptBuffer: [],
-      //   modalMessage: 'Click Speak to start speaking, then click Stop after you finish.',
-      //   recordingStartTime: null,
-      //   announcement: '',
-      // });
+    
 
       this.setState({
-          showModal: true,
+        // announcement: 'Voice search dialog open',
+        announcement: '',
+        showModal: true,
         isListening: false,
         interimText: '',
         finalText: '',
@@ -494,7 +326,7 @@ class AudioSearch extends Component {
         transcriptBuffer: [],
         modalMessage: 'Click Speak to start speaking, then click Stop after you finish.',
         recordingStartTime: null,
-        announcement: '',
+        // announcement: '',
         }, () => {
           // NEW: Reset session and abort on modal open
           this.sessionIdRef.current = null;
@@ -503,6 +335,20 @@ class AudioSearch extends Component {
             this.abortControllerRef.current = null;
           }
         });
+
+
+        // NEW: Delay before focusing voiceText and announcing instruction
+            // setTimeout(() => {
+            //   const voiceText = document.getElementById('voiceText');
+            //   console.log('Delayed focus to voiceText', voiceText);
+            //   if (voiceText) {
+            //     voiceText.focus();
+           
+            //     setTimeout(() => {
+            //       this.setState({ announcement: '' });
+            //     }, 3000);
+            //   }
+            // }, 2000);  //  (2 seconds here)
 
     };
 
@@ -766,7 +612,25 @@ class AudioSearch extends Component {
             this.sessionIdRef.current = Date.now().toString();
             this.abortControllerRef.current = new AbortController();
             console.log('New session started', { sessionId: this.sessionIdRef.current });
-                  
+            
+            // NEW: Play beep sound after state update (confirms "Listening for speech...")
+        //  if (this.state.isListening) {
+        //       this.playBeepSound();
+        //     }
+            
+
+              // const voiceText = document.getElementById('voiceText');
+              // if (voiceText) {
+              //   voiceText.focus();
+           
+              // }
+
+          // setTimeout(() => {
+          //     if (this.state.isListening) {
+          //       this.playBeepSound();
+          //     }
+          //   }, 3000);
+              
           });
         } catch (error) {
           console.error('Error starting MediaRecorder or SpeechRecognition:', { error: error.message, timestamp: new Date().toISOString() });
@@ -911,17 +775,7 @@ class AudioSearch extends Component {
         return;
       }
 
-      // if (closeModal) {
-      //   this.setState({
-      //     showModal: false,
-      //     announcement: 'Voice search dialog closed',
-      //   }, () => {
-      //     console.log('Modal closed on cancel', { timestamp: new Date().toISOString() });
-        
-      //   });
-      //   this.cleanupAfterStop();
-      //   return;  // Exit early, skip API processing
-      // }
+     
 
 
       if (closeModal) {
@@ -947,32 +801,133 @@ class AudioSearch extends Component {
       console.log('Stop recording completed', { isStarting: this.isStartingRef.current, isStopping: this.isStoppingRef.current, showModal: this.state.showModal, interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
     };
 
+
+
+
     handleEscKey = (event) => {
-      // if (event.key === 'Escape' && this.state.showModal && !this.isStoppingRef.current) {
-      if (event.key === 'Escape' && this.state.showModal) {
-        event.stopPropagation();
-        event.preventDefault();
-        console.log('ESC key detected', { showModal: this.state.showModal, interimText: this.state.interimText, timestamp: new Date().toISOString() });
-        this.audioChunksRef.current = [];
-        this.isStartingRef.current = false;
-        this.isStoppingRef.current = false;
-        if (this.recordingTimeout) {
-          clearTimeout(this.recordingTimeout);
-          this.recordingTimeout = null;
-        }
-        if (this.speechRecognition.current) {
-          this.speechRecognition.current.stop();
-          this.speechRecognition.current = null;
-        }
-        this.handleStopRecording(true);
+    if (event.key === 'Escape' && this.state.showModal) {
+      event.stopPropagation();
+      event.preventDefault();
+      console.log('ESC key detected - closing modal');
+      // Clear any ongoing recording/audio
+      this.audioChunksRef.current = [];
+      if (this.recordingTimeout) clearTimeout(this.recordingTimeout);
+      if (this.speechRecognition.current) {
+        this.speechRecognition.current.stop();
+        this.speechRecognition.current = null;
       }
+      this.handleStopRecording(true);  // Closes modal and cleans up
+    }
+  };
+
+  getSpeakAriaLabel = () => {
+    const base = 'Speak button';
+    if (this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak) {
+      return `${base}, unavailable`;
+    }
+    return `${base}, select to start recording`;
+  };
+
+  getStopAriaLabel = () => {
+    const base = 'Stop button';
+    if (!this.state.isListening || this.isStoppingRef.current) {
+      return `${base}, unavailable`;
+    }
+    return `${base}, select to stop recording`;
+  };
+
+  getSearchAriaLabel = () => {
+    const base = 'Search button';
+    if (!this.state.canSearch) {
+      return `${base}, unavailable`;
+    }
+    return `${base}, select to search with transcribed text`;
+  };
+
+
+  playBeepSound = async () => {
+  if (!window.AudioContext) {
+    console.warn('Web Audio API not supported, skipping beep', { timestamp: new Date().toISOString() });
+    return;
+  }
+
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Resume if suspended (e.g., first user interaction)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
+
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Beep config: 800Hz sine wave, 200ms duration, volume fade-in/out for smoothness
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime); // Frequency
+    oscillator.type = 'sine';
+
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime); // Start silent
+    gainNode.gain.linearRampToValueAtTime(0.9, audioContext.currentTime + 0.01); // Quick fade-in to 30% volume
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2); // Fade out over 200ms
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.2);
+
+    console.log('Beep sound played', { timestamp: new Date().toISOString() });
+
+    // Cleanup after playback
+    oscillator.onended = () => {
+      audioContext.close();
     };
+  } catch (error) {
+    console.error('Error playing beep sound:', { error: error.message, timestamp: new Date().toISOString() });
+    // Don't disrupt UX—just log
+  }
+};
+
+
+
+
+triggerAnnouncementSequence = () => {
+  // Step 1: Immediate announcement on open (already in setState, but reinforce if needed)
+  this.setState({ 
+    announcement: 'Voice search dialog open' 
+  }, () => {
+    // Step 2: Short pause for title/open to read (~500ms - covers "Voice Search" title)
+    setTimeout(() => {
+      // Announce instructions (queues politely after title)
+      this.setState({ 
+        announcement: 'Click Speak to start speaking, then click Stop after you finish.' 
+      }, () => {
+        // Step 3: Brief pause for instructions to complete (~1500ms - phrase takes ~1s at normal speed)
+        setTimeout(() => {
+          // Clear announcement to avoid repetition
+          this.setState({ announcement: '' });
+          
+          // Step 4: Shift focus to Speak button
+          const speakButton = document.getElementById('speakButton');
+          console.log('Announcement sequence complete - focusing Speak button', speakButton);
+          if (speakButton && this.state.showModal) {
+            speakButton.focus();
+          
+          }
+        }, 2000);  
+      });
+    }, 2500);  // Title read time
+  });
+};
+
 
     render() {
       return (
         <>
           {/* New: Screen reader announcement region */}
-          <div aria-live="polite" role="status" className="sr-only">
+          <div aria-live="polite" role="status" className="sr-only"
+          // aria-atomic="true"
+          >
             {this.state.announcement}
           </div>
           <button
@@ -985,17 +940,37 @@ class AudioSearch extends Component {
             <FontAwesomeIcon icon={faMicrophone} />
           </button>
           {this.state.showModal && (
-            <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog">
+            <FocusTrap
+              active={true}  // Traps focus when true
+              focusTrapOptions={{
+                onDeactivate: () => {
+                  // Restore focus to mic button on close (a11y: returns user to trigger point)
+                  const micButton = document.querySelector('button.mic-btn');
+                  if (micButton) micButton.focus();
+                  console.log('FocusTrap deactivated - focus restored to mic button');
+                },
+                onActivate: () => {
+                  // NEW: Trigger announcement sequence on trap activation (post-render)
+                  console.log('FocusTrap activated - starting announcement sequence');
+                  this.triggerAnnouncementSequence();
+                },
+                escapeDeactivates: true,  // Auto-close on ESC (triggers onDeactivate)
+                clickOutsideDeactivates: false,  // Prevent accidental close on outside click
+                allowOutsideClick: false,
+                // initialFocus: '#voiceText',  
+                initialFocus: '#voiceSearchModalLabel',  
+                
+              }}
+  >
+            {/* <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true" role="dialog" */}
+            <div className="voice-modal show" tabIndex="-1" aria-labelledby="voiceSearchModalLabel" aria-modal="true"
+            // onKeyDown={this.handleEscKey}
+            >
               <div className="modal-dialog modal-dialog-centered modal-lg" >
 
-                   {/* <div aria-live="polite" role="status" className="sr-only">
-                       Voice search dialog Open
-                </div> */}
-
                 <div className="mx-modal-content">
-                  <div className="mx-modal-header">
-                    <h5 className="mx-modal-title" id="voiceSearchModalLabel"
-                    // aria-label="MX Voice search dialog open"
+                  <div className="mx-modal-header" >
+                    <h5 className="mx-modal-title" id="voiceSearchModalLabel" 
                     >
                       Voice Search
                       
@@ -1004,34 +979,21 @@ class AudioSearch extends Component {
                       type="button"
                       className="btn-close"
                       onClick={() => this.handleStopRecording(true)}
-                      aria-label="Close"
-                      // disabled={this.isStoppingRef.current}
+                      // aria-label="Close"
+                      aria-label="Close button, select to close voice search dialog"
                     ></button>
                   </div>
 
                   <div className="modal-body">
                     <p className="text-gray-700 mb-4 text-base" id="voiceText" 
-                      tabindex="0"
-                      // aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
+                      tabIndex="0"
                       aria-labelledby="voiceLable"
+                      // aria-hidden={this.state.announcement === 'Voice search dialog open'}
                       >
                         <span id="voiceLable">
                       {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
                         </span>
                     </p>
-
-
-
-                    {/* <p 
-                      className="text-gray-700 mb-4 text-base" 
-                      id="voiceText" 
-                      tabindex="0"
-                      aria-label={this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
-                    >
-                      <span aria-hidden="true">
-                        {this.state.finalText || this.state.interimText || this.state.modalMessage || 'Click Speak to start speaking, then click Stop after you finish.'}
-                      </span>
-                    </p> */}
 
                     {process.env.NODE_ENV === 'dev' && this.state.debugMessage && (
                       <p className="text-xs text-gray-500 mt-2 break-words">Output: {this.state.debugMessage}</p>
@@ -1043,7 +1005,8 @@ class AudioSearch extends Component {
                       onClick={this.handleSpeak}
                       className="btn"
                       disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
-                      aria-label="Start recording"
+                      // aria-label="Start recording"
+                      aria-label={this.getSpeakAriaLabel()}
                     >
                       Speak
                     </button>
@@ -1051,7 +1014,8 @@ class AudioSearch extends Component {
                       onClick={() => this.handleStopRecording(false)}
                       className="btn"
                       disabled={!this.state.isListening || this.isStoppingRef.current}
-                      aria-label="Stop recording"
+                      // aria-label="Stop recording"
+                      aria-label={this.getStopAriaLabel()}
                     >
                       <FontAwesomeIcon icon={faStop} /> Stop
                     </button>
@@ -1079,7 +1043,8 @@ class AudioSearch extends Component {
                       }}
                       className="btn"
                       disabled={!this.state.canSearch}
-                      aria-label="Search with transcribed text"
+                      // aria-label="Search with transcribed text"
+                      aria-label={this.getSearchAriaLabel()}
                     >
                       Search
                     </button>
@@ -1087,6 +1052,7 @@ class AudioSearch extends Component {
                 </div>
               </div>
             </div>
+          </FocusTrap>
           )}
         </>
       );
