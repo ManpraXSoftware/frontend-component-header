@@ -18,7 +18,8 @@ class AudioSearch extends Component {
       transcriptBuffer: [],
       modalMessage: '',
       recordingStartTime: null,
-      announcement: ''
+      announcement: '',
+      isFocusOnSTopBTN: false
     };
 
     this.mediaRecorder = React.createRef();
@@ -187,7 +188,8 @@ class AudioSearch extends Component {
           }
         } else {
           console.error('Transcription API error:', { status: response.status, error: data.error || 'Unknown error', data, timestamp: new Date().toISOString() });
-          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Transcription error. Please try again.';
+          // const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Transcription error. Please try again.';
+          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
           if (this.sessionIdRef.current !== currentSessionId) return;
           this.setState({
             debugMessage: 'Transcription error: ' + (data.error || 'Unknown error'),
@@ -326,7 +328,7 @@ class AudioSearch extends Component {
         transcriptBuffer: [],
         modalMessage: 'Click Speak to start speaking, then click Stop after you finish.',
         recordingStartTime: null,
-        // announcement: '',
+        isFocusOnSTopBTN: false,
         }, () => {
           // NEW: Reset session and abort on modal open
           this.sessionIdRef.current = null;
@@ -625,11 +627,50 @@ class AudioSearch extends Component {
            
               // }
 
-          setTimeout(() => {
-              if (this.state.isListening) {
-                this.playBeepSound();
-              }
-            }, 3000);
+          // setTimeout(() => {
+          //     if (this.state.isListening) {
+          //       this.playBeepSound();
+          //     }
+          //   }, 3000);
+
+            
+
+          //   const stopButton = document.getElementById('stopButton');
+          //     if (stopButton) {
+          //       stopButton.focus();
+           
+          //     }
+
+
+        //   setTimeout(() => {
+        //   if (this.state.isListening) {
+        //     this.playBeepSound();
+        //     const stopButton = document.getElementById('stopButton');
+        //     if (stopButton) {
+        //       // // NEW: Temporarily clear aria-label to suppress announcement on focus
+        //       // const originalLabel = stopButton.getAttribute('aria-label');
+        //       // stopButton.setAttribute('aria-label', '');  // Empty = silent focus
+        //       stopButton.focus();
+              
+        //       // Restore after a brief delay (NVDA announces instantly, so 100ms is enough)
+        //       // setTimeout(() => {
+        //       //   if (stopButton && originalLabel) {
+        //       //     stopButton.setAttribute('aria-label', originalLabel);
+        //       //   }
+        //       // }, 100);
+        //     }
+        //   }
+        // }, 3000);
+
+        
+
+        setTimeout(() => {
+        if (this.state.isListening) {
+          this.playBeepSound();
+          
+        }
+      }, 3000);
+
               
           });
         } catch (error) {
@@ -700,6 +741,7 @@ class AudioSearch extends Component {
         modalMessage: 'Processing transcription...',
         finalText: this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Processing transcription...',
         canRespeak: false,
+        isFocusOnSTopBTN: false
       }, () => {
         console.log('State updated with stop initiated', { finalText: this.state.finalText, modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
       });
@@ -818,6 +860,34 @@ class AudioSearch extends Component {
       }
       this.handleStopRecording(true);  // Closes modal and cleans up
     }
+
+    else {
+
+      if (!this.state.isListening) return;  // Only during listening
+
+          const isTab = event.key === 'Tab';
+          if (!isTab) return;
+
+          // One-time redirect: Only if not yet focused on Stop this session
+          if (!this.state.isFocusOnSTopBTN) {
+            const stopButton = document.getElementById('stopButton');
+            if (!stopButton) return;
+
+            const currentFocus = document.activeElement;
+            const isInCycle = currentFocus.id === 'stopButton' || currentFocus.id === 'voiceText';
+            if (!isInCycle) {
+              event.preventDefault();
+              stopButton.focus();
+              this.setState({ isFocusOnSTopBTN: true });  // Set flag: Now allow normal tabbing
+              console.log('First tab redirected to Stop button during listening');
+              return;  // Exit: Don't let FocusTrap interfere on first tab
+            }
+            // If already in cycle on first tab, still set flag (normal flow starts)
+            this.setState({ isFocusOnSTopBTN: true });
+          }
+    }
+
+
   };
 
   getSpeakAriaLabel = () => {
@@ -825,7 +895,7 @@ class AudioSearch extends Component {
     if (this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak) {
       return `${base}, unavailable`;
     }
-    return `${base}, select to start recording`;
+    return `${base}, select to start speaking`;
   };
 
   getStopAriaLabel = () => {
@@ -833,7 +903,7 @@ class AudioSearch extends Component {
     if (!this.state.isListening || this.isStoppingRef.current) {
       return `${base}, unavailable`;
     }
-    return `${base}, select to stop recording`;
+    return `${base}, select to stop speaking`;
   };
 
   getSearchAriaLabel = () => {
@@ -1011,6 +1081,7 @@ triggerAnnouncementSequence = () => {
                       Speak
                     </button>
                     <button
+                      id="stopButton"
                       onClick={() => this.handleStopRecording(false)}
                       className="btn"
                       disabled={!this.state.isListening || this.isStoppingRef.current}
