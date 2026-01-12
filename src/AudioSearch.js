@@ -19,7 +19,8 @@ class AudioSearch extends Component {
       modalMessage: '',
       recordingStartTime: null,
       announcement: '',
-      isFocusOnSTopBTN: false
+      isFocusOnSTopBTN: false,
+      hasAnnouncedError: false,
     };
 
     this.mediaRecorder = React.createRef();
@@ -51,10 +52,10 @@ class AudioSearch extends Component {
       this.setState({ announcement: 'Voice search dialog closed' });
     }
 
-    if (this.state.finalText !== prevState.finalText || this.state.interimText !== prevState.interimText) {
-      this.forceUpdate();
-      console.log('Text updated, forcing re-render', { finalText: this.state.finalText, interimText: this.state.interimText, timestamp: new Date().toISOString() });
-    }
+    // if (this.state.finalText !== prevState.finalText || this.state.interimText !== prevState.interimText) {
+    //   this.forceUpdate();
+    //   console.log('Text updated, forcing re-render', { finalText: this.state.finalText, interimText: this.state.interimText, timestamp: new Date().toISOString() });
+    // }
   }
 
   componentDidMount() {
@@ -149,20 +150,33 @@ class AudioSearch extends Component {
               debugMessage: 'Transcription successful: ' + data.text, 
               isListening: false, 
               modalMessage: '',
+              hasAnnouncedError: true,
             }, () => {
               console.log('State updated with transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
-              const voiceText = document.getElementById('voiceText');
-              if (voiceText) {
+              // const voiceText = document.getElementById('voiceText');
+              // if (voiceText) {
             
 
-                voiceText.focus();
+              //   voiceText.focus();
            
-              }
-              this.forceUpdate();
+              // }
+              if (!this.state.hasAnnouncedError) return
+              // this.forceUpdate();
             });
+
+            const voiceText = document.getElementById('voiceText');
+              if (voiceText) {
+                voiceText.setAttribute('aria-live', 'assertive');
+                voiceText.focus();
+                setTimeout(() => {
+                  if (voiceText) {
+                    voiceText.setAttribute('aria-live', 'polite');
+                  }
+                }, 2000);
+              }
           } else {
             console.log('Transcription returned empty text, using interimText', { interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
-            const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'No speech detected. Please speak clearly and try again.';
+            const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
             if (this.sessionIdRef.current !== currentSessionId) return;
             this.setState({
               debugMessage: 'No speech detected in audio, falling back to interimText.',
@@ -221,7 +235,7 @@ class AudioSearch extends Component {
           }
 
           console.error('Transcription API fetch error:', { error: error.message, stack: error.stack, timestamp: new Date().toISOString() });
-          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Error connecting to transcription service. Please try again.';
+          const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
           if (this.sessionIdRef.current !== currentSessionId) return;
           this.setState({
             debugMessage: 'Transcription fetch error: ' + error.message,
@@ -251,7 +265,7 @@ class AudioSearch extends Component {
           console.log('Ignoring late processing error for old session', { currentSessionId, newSessionId: this.sessionIdRef.current });
           return;
         }
-        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Error processing audio. Please try again.';
+        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
         this.setState({
           debugMessage: 'Processing error: ' + error.message,
           showModal: true,
@@ -398,6 +412,7 @@ class AudioSearch extends Component {
         transcriptBuffer: [],
         modalMessage: 'Preparing to record, please wait...',
         recordingStartTime: null,
+        hasAnnouncedError: false,
       });
 
       try {
@@ -741,7 +756,8 @@ class AudioSearch extends Component {
         modalMessage: 'Processing transcription...',
         finalText: this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Processing transcription...',
         canRespeak: false,
-        isFocusOnSTopBTN: false
+        isFocusOnSTopBTN: false,
+        hasAnnouncedError: false,
       }, () => {
         console.log('State updated with stop initiated', { finalText: this.state.finalText, modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
       });
