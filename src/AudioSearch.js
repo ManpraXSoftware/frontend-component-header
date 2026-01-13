@@ -19,8 +19,7 @@ class AudioSearch extends Component {
       modalMessage: '',
       recordingStartTime: null,
       announcement: '',
-      isFocusOnSTopBTN: false,
-      hasAnnouncedError: false,
+      isFocusOnSTopBTN: false
     };
 
     this.mediaRecorder = React.createRef();
@@ -150,30 +149,17 @@ class AudioSearch extends Component {
               debugMessage: 'Transcription successful: ' + data.text, 
               isListening: false, 
               modalMessage: '',
-              hasAnnouncedError: true,
             }, () => {
               console.log('State updated with transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
-              // const voiceText = document.getElementById('voiceText');
-              // if (voiceText) {
+              const voiceText = document.getElementById('voiceText');
+              if (voiceText) {
             
 
-              //   voiceText.focus();
-           
-              // }
-              if (!this.state.hasAnnouncedError) return
-              // this.forceUpdate();
-            });
-
-            const voiceText = document.getElementById('voiceText');
-              if (voiceText) {
-                voiceText.setAttribute('aria-live', 'assertive');
                 voiceText.focus();
-                setTimeout(() => {
-                  if (voiceText) {
-                    voiceText.setAttribute('aria-live', 'polite');
-                  }
-                }, 2000);
+           
               }
+              this.forceUpdate();
+            });
           } else {
             console.log('Transcription returned empty text, using interimText', { interimText: this.state.interimText, transcriptBuffer: this.state.transcriptBuffer, timestamp: new Date().toISOString() });
             const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
@@ -190,13 +176,13 @@ class AudioSearch extends Component {
               console.log('State updated with empty transcription', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
               const voiceText = document.getElementById('voiceText');
               if (voiceText) {
-                voiceText.setAttribute('aria-live', 'assertive');
+                // voiceText.setAttribute('aria-live', 'assertive');
                 voiceText.focus();
-                setTimeout(() => {
-                  if (voiceText) {
-                    voiceText.setAttribute('aria-live', 'polite');
-                  }
-                }, 2000);
+                // setTimeout(() => {
+                //   if (voiceText) {
+                //     voiceText.setAttribute('aria-live', 'polite');
+                //   }
+                // }, 2000);
               }
             });
           }
@@ -217,13 +203,15 @@ class AudioSearch extends Component {
             console.log('State updated with transcription error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
             const voiceText = document.getElementById('voiceText');
             if (voiceText) {
-              voiceText.setAttribute('aria-live', 'assertive');
-              voiceText.focus();
-              setTimeout(() => {
-                if (voiceText) {
-                  voiceText.setAttribute('aria-live', 'polite');
-                  }
-                }, 2000);
+                voiceText.focus();
+
+              // voiceText.setAttribute('aria-live', 'assertive');
+              // voiceText.focus();
+              // setTimeout(() => {
+              //   if (voiceText) {
+              //     voiceText.setAttribute('aria-live', 'polite');
+              //     }
+              //   }, 2000);
               }
             });
           }
@@ -249,13 +237,13 @@ class AudioSearch extends Component {
             console.log('State updated with fetch error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
             const voiceText = document.getElementById('voiceText');
             if (voiceText) {
-              voiceText.setAttribute('aria-live', 'assertive');
+              // voiceText.setAttribute('aria-live', 'assertive');
               voiceText.focus();
-              setTimeout(() => {
-                if (voiceText) {
-                  voiceText.setAttribute('aria-live', 'polite');
-                }
-              }, 2000);
+              // setTimeout(() => {
+              //   if (voiceText) {
+              //     voiceText.setAttribute('aria-live', 'polite');
+              //   }
+              // }, 2000);
             }
           });
         }
@@ -278,13 +266,13 @@ class AudioSearch extends Component {
           console.log('State updated with processing error', { finalText: this.state.finalText, canSearch: this.state.canSearch, timestamp: new Date().toISOString() });
           const voiceText = document.getElementById('voiceText');
           if (voiceText) {
-            voiceText.setAttribute('aria-live', 'assertive');
+            // voiceText.setAttribute('aria-live', 'assertive');
             voiceText.focus();
-            setTimeout(() => {
-              if (voiceText) {
-                voiceText.setAttribute('aria-live', 'polite');
-              }
-            }, 2000);
+            // setTimeout(() => {
+            //   if (voiceText) {
+            //     voiceText.setAttribute('aria-live', 'polite');
+            //   }
+            // }, 2000);
           }
         });
       }
@@ -412,7 +400,6 @@ class AudioSearch extends Component {
         transcriptBuffer: [],
         modalMessage: 'Preparing to record, please wait...',
         recordingStartTime: null,
-        hasAnnouncedError: false,
       });
 
       try {
@@ -756,8 +743,7 @@ class AudioSearch extends Component {
         modalMessage: 'Processing transcription...',
         finalText: this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Processing transcription...',
         canRespeak: false,
-        isFocusOnSTopBTN: false,
-        hasAnnouncedError: false,
+        isFocusOnSTopBTN: false
       }, () => {
         console.log('State updated with stop initiated', { finalText: this.state.finalText, modalMessage: this.state.modalMessage, timestamp: new Date().toISOString() });
       });
@@ -795,11 +781,11 @@ class AudioSearch extends Component {
             if (voiceText) {
               voiceText.setAttribute('aria-live', 'assertive');
               voiceText.focus();
-              setTimeout(() => {
-                if (voiceText) {
-                  voiceText.setAttribute('aria-live', 'polite');
-                }
-              }, 2000);
+              // setTimeout(() => {
+              //   if (voiceText) {
+              //     voiceText.setAttribute('aria-live', 'polite');
+              //   }
+              // }, 2000);
             }
           });
           this.cleanupAfterStop();
@@ -807,7 +793,7 @@ class AudioSearch extends Component {
         }
       } else {
         console.log('MediaRecorder already stopped or not initialized', { state: this.mediaRecorder.current?.state || 'null', timestamp: new Date().toISOString() });
-        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'No audio recorded. Please try again.';
+        const fallbackText = this.state.transcriptBuffer.join(' ') || this.state.interimText || 'Sorry, I couldn’t understand that. Please speak again.';
         this.setState({ 
           debugMessage: 'MediaRecorder already stopped or not initialized',
           showModal: closeModal ? false : this.state.showModal,
@@ -822,11 +808,11 @@ class AudioSearch extends Component {
           if (voiceText) {
             voiceText.setAttribute('aria-live', 'assertive');
             voiceText.focus();
-            setTimeout(() => {
-              if (voiceText) {
-                voiceText.setAttribute('aria-live', 'polite');
-              }
-            }, 2000);
+            // setTimeout(() => {
+            //   if (voiceText) {
+            //     voiceText.setAttribute('aria-live', 'polite');
+            //   }
+            // }, 2000);
           }
         });
         this.cleanupAfterStop();
