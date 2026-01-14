@@ -1075,8 +1075,9 @@ triggerAnnouncementSequence = () => {
                     <button
                       id="speakButton"
                       onClick={this.handleSpeak}
-                      className="btn"
-                      disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
+                      // className="btn"
+                      className={`btn ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak ? 'mx-disabled' : ''}`}
+                      // disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
                       // aria-label="Start recording"
                       aria-label={this.getSpeakAriaLabel()}
                     >
@@ -1085,8 +1086,10 @@ triggerAnnouncementSequence = () => {
                     <button
                       id="stopButton"
                       onClick={() => this.handleStopRecording(false)}
-                      className="btn"
-                      disabled={!this.state.isListening || this.isStoppingRef.current}
+                      // className="btn"
+                      className={`btn ${!this.state.isListening || this.isStoppingRef.current ? 'mx-disabled' : ''}`}
+
+                      // disabled={!this.state.isListening || this.isStoppingRef.current}
                       // aria-label="Stop recording"
                       aria-label={this.getStopAriaLabel()}
                     >
@@ -1114,8 +1117,10 @@ triggerAnnouncementSequence = () => {
                           }
                         }
                       }}
-                      className="btn"
-                      disabled={!this.state.canSearch}
+                      // className="btn"
+                      // disabled={!this.state.canSearch}
+                      className={`btn ${!this.state.canSearch ? 'mx-disabled' : ''}`}
+
                       // aria-label="Search with transcribed text"
                       aria-label={this.getSearchAriaLabel()}
                     >

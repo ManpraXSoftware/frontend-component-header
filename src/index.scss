@@ -12912,3 +12912,12 @@ body .uwy .ulsti{
 .voice-modal.show:focus .modal-dialog {
     box-shadow: none !important;
 }
+
+.mx-disabled {
+    background: rgb(156, 163, 175) !important;
+    opacity: 0.65;
+    cursor: default;
+    pointer-events: none;
+    border-color: #d9d9d9;
+    color: #a0a0a0;
+}
