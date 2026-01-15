@@ -1107,6 +1107,7 @@ triggerAnnouncementSequence = () => {
                       // aria-label={this.getSpeakAriaLabel()}
                       aria-label="speak"
                       aria-describedby="speak-desc"
+                      aria-disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak ? 'true' : 'false'}
 
                     >
                       Speak
@@ -1130,6 +1131,8 @@ triggerAnnouncementSequence = () => {
                       // aria-label={this.getStopAriaLabel()}
                       aria-label="Stop"
                       aria-describedby="stop-desc"
+                      aria-disabled={!this.state.isListening || this.isStoppingRef.current ? 'true' : 'false'}
+
                     >
                       <FontAwesomeIcon icon={faStop} /> Stop
                     </button>
@@ -1164,6 +1167,8 @@ triggerAnnouncementSequence = () => {
                       // aria-label={this.getSearchAriaLabel()}
                       aria-label="Search"
                       aria-describedby="search-desc"
+                      aria-disabled={!this.state.canSearch? 'true' : 'false'}
+
                     >
                       Search
                     </button>
