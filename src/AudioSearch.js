@@ -1114,7 +1114,14 @@ triggerAnnouncementSequence = () => {
                     <span id="speak-desc" className="sr-only">{this.getSpeakDescription()}</span>
                     <button
                       id="stopButton"
-                      onClick={() => this.handleStopRecording(false)}
+                      // onClick={() => this.handleStopRecording(false)}
+                      onClick={(e) => {
+                        if (!this.state.isListening || this.isStoppingRef.current) {
+                          e.preventDefault();  
+                          return;  
+                        }
+                        this.handleStopRecording(false);  // Only calls if enabled
+                      }}
                       // className="btn"
                       className={`btn ${!this.state.isListening || this.isStoppingRef.current ? 'mx-disabled' : ''}`}
 
