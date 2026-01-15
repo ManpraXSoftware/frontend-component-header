@@ -892,28 +892,50 @@ class AudioSearch extends Component {
 
   };
 
-  getSpeakAriaLabel = () => {
-    const base = 'Speak button';
+  // getSpeakAriaLabel = () => {
+  //   const base = 'Speak button';
+  //   if (this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak) {
+  //     return `${base}, unavailable`;
+  //   }
+  //   return `${base}, select to start speaking`;
+  // };
+
+  // getStopAriaLabel = () => {
+  //   const base = 'Stop button';
+  //   if (!this.state.isListening || this.isStoppingRef.current) {
+  //     return `${base}, unavailable`;
+  //   }
+  //   return `${base}, select to stop speaking`;
+  // };
+
+  // getSearchAriaLabel = () => {
+  //   const base = 'Search button';
+  //   if (!this.state.canSearch) {
+  //     return `${base}, unavailable`;
+  //   }
+  //   return `${base}, select to search with transcribed text`;
+  // };
+
+
+  getSpeakDescription = () => {  
     if (this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak) {
-      return `${base}, unavailable`;
+      return 'unavailable';
     }
-    return `${base}, select to start speaking`;
-  };
+    return 'select to start speaking';
+    };
 
-  getStopAriaLabel = () => {
-    const base = 'Stop button';
+  getStopDescription = () => {
     if (!this.state.isListening || this.isStoppingRef.current) {
-      return `${base}, unavailable`;
+      return 'unavailable';
     }
-    return `${base}, select to stop speaking`;
+    return 'select to stop speaking';
   };
 
-  getSearchAriaLabel = () => {
-    const base = 'Search button';
+  getSearchDescription = () => {
     if (!this.state.canSearch) {
-      return `${base}, unavailable`;
+      return 'unavailable';
     }
-    return `${base}, select to search with transcribed text`;
+    return 'select to search with transcribed text';
   };
 
 
@@ -1052,8 +1074,11 @@ triggerAnnouncementSequence = () => {
                       className="btn-close"
                       onClick={() => this.handleStopRecording(true)}
                       // aria-label="Close"
-                      aria-label="Close button, select to close voice search dialog"
+                      // aria-label="Close button, select to close voice search dialog"
+                      aria-label="Close"
+                      aria-describedby="close-desc"
                     ></button>
+                    <span id="close-desc" className="sr-only">select to close voice search dialog</span>
                   </div>
 
                   <div className="modal-body">
@@ -1079,10 +1104,14 @@ triggerAnnouncementSequence = () => {
                       className={`btn ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak ? 'mx-disabled' : ''}`}
                       // disabled={this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak}
                       // aria-label="Start recording"
-                      aria-label={this.getSpeakAriaLabel()}
+                      // aria-label={this.getSpeakAriaLabel()}
+                      aria-label="speak"
+                      aria-describedby="speak-desc"
+
                     >
                       Speak
                     </button>
+                    <span id="speak-desc" className="sr-only">{this.getSpeakDescription()}</span>
                     <button
                       id="stopButton"
                       onClick={() => this.handleStopRecording(false)}
@@ -1091,10 +1120,13 @@ triggerAnnouncementSequence = () => {
 
                       // disabled={!this.state.isListening || this.isStoppingRef.current}
                       // aria-label="Stop recording"
-                      aria-label={this.getStopAriaLabel()}
+                      // aria-label={this.getStopAriaLabel()}
+                      aria-label="Stop"
+                      aria-describedby="stop-desc"
                     >
                       <FontAwesomeIcon icon={faStop} /> Stop
                     </button>
+                    <span id="stop-desc" className="sr-only">{this.getStopDescription()}</span>
                     <button
                       onClick={(event) => {
                         event.stopPropagation();
@@ -1122,10 +1154,13 @@ triggerAnnouncementSequence = () => {
                       className={`btn ${!this.state.canSearch ? 'mx-disabled' : ''}`}
 
                       // aria-label="Search with transcribed text"
-                      aria-label={this.getSearchAriaLabel()}
+                      // aria-label={this.getSearchAriaLabel()}
+                      aria-label="Search"
+                      aria-describedby="search-desc"
                     >
                       Search
                     </button>
+                    <span id="search-desc" className="sr-only">{this.getSearchDescription()}</span>
                   </div>
                 </div>
               </div>
