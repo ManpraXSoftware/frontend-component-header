@@ -1140,8 +1140,9 @@ triggerAnnouncementSequence = () => {
                     </button>
                     <span id="stop-desc" className="sr-only">{this.getStopDescription()}</span>
                     <button
+                      type="button"
+
                       onClick={(event) => {
-                        type="button"
                         event.stopPropagation();
                         console.log('Search button clicked', { 
                           finalText: this.state.finalText, 
@@ -1162,15 +1163,11 @@ triggerAnnouncementSequence = () => {
                           }
                         }
                       }}
-                      // className="btn"
-                      // disabled={!this.state.canSearch}
                       className={`btn ${!this.state.canSearch ? 'mx-disabled' : ''}`}
 
-                      // aria-label="Search with transcribed text"
                       // aria-label={this.getSearchAriaLabel()}
                       aria-label="Search"
                       aria-describedby="search-desc"
-                      // aria-disabled={!this.state.canSearch? 'true' : 'false'}
 
                     >
                       Search
