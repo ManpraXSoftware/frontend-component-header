@@ -1116,6 +1116,7 @@ triggerAnnouncementSequence = () => {
                     <span id="speak-desc" className="sr-only">{this.getSpeakDescription()}</span>
                     <button
                       id="stopButton"
+                      type="button"
                       // onClick={() => this.handleStopRecording(false)}
                       onClick={(e) => {
                         if (!this.state.isListening || this.isStoppingRef.current) {
