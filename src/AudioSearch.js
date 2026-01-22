@@ -1099,6 +1099,7 @@ triggerAnnouncementSequence = () => {
                   <div className="mx-modal-footer btn-modal-search">
                     <button
                       id="speakButton"
+                      type="button"
                       onClick={this.handleSpeak}
                       // className="btn"
                       className={`btn ${this.state.isListening || this.isStartingRef.current || this.isStoppingRef.current || !this.state.canRespeak ? 'mx-disabled' : ''}`}
@@ -1139,6 +1140,7 @@ triggerAnnouncementSequence = () => {
                     <span id="stop-desc" className="sr-only">{this.getStopDescription()}</span>
                     <button
                       onClick={(event) => {
+                        type="button"
                         event.stopPropagation();
                         console.log('Search button clicked', { 
                           finalText: this.state.finalText, 
