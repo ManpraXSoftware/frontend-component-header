@@ -89,7 +89,7 @@ class Header extends Component {
     const localizeInnerText = document.createElement("script");
     localizeInnerText.innerText = !function (a) { if (!a.Localize) { a.Localize = {}; for (var e = ["translate", "untranslate", "phrase", "initialize", "translatePage", "setLanguage", "getLanguage", "getSourceLanguage", "detectLanguage", "getAvailableLanguages", "untranslatePage", "bootstrap", "prefetch", "on", "off", "hideWidget", "showWidget"], t = 0; t < e.length; t++)a.Localize[e[t]] = function () { } } }(window);
     const localizeKey = document.createElement("script");
-    localizeKey.innerText = Localize.initialize({ key: mx_localizekey, rememberLanguage: true, });
+    localizeKey.innerText = Localize.initialize({ key: mx_localizekey, rememberLanguage: true, retranslateOnNewPhrases: true,});
     const langSelect = document.createElement("select");
     langSelect.id = "langOptions";
     langSelect.className = "myLang";
@@ -107,7 +107,7 @@ class Header extends Component {
 
     localizeScript.onload = () => {
       console.log("initialing localizer ...")
-      Localize.initialize({ key: mx_localizekey, rememberLanguage: true });
+      Localize.initialize({ key: mx_localizekey, rememberLanguage: true,retranslateOnNewPhrases: true });
       
       Localize.getAvailableLanguages((error, data) => {
         if (error) {
