@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { getConfig } from '@edx/frontend-platform';
 import { injectIntl, intlShape } from '@edx/frontend-platform/i18n';
@@ -30,6 +30,19 @@ const LearningHeader = ({
   courseOrg, courseNumber, courseTitle, intl, showUserDropdown,
 }) => {
   const { authenticatedUser } = useContext(AppContext);
+
+  useEffect(() => {
+    const gaId = getConfig().GOOGLE_ANALYTICS_ID;
+    if (!gaId || window.gtag) { return; }
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function gtag() { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', gaId);
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+    document.head.appendChild(script);
+  }, []);
 
   const headerLogo = (
     <LinkedLogo
