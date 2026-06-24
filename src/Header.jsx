@@ -801,7 +801,7 @@ class Header extends Component {
                     <div className="mobile-nav-item dropdown-item dropdown-nav-item" id="dashboard-navbar"><a href="/explore-courses/dashboard/programs" role="menuitem">Dashboard</a></div>
                     <div className="mobile-nav-item dropdown-item dropdown-nav-item" ><a id="user-profiler-redirect" href="" role="menuitem">Profile</a></div>
                     <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().ACCOUNT_SETTINGS_URL} role="menuitem">Account</a></div>
-                    <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().LOGOUT_URL} role="menuitem">Sign Out</a></div>
+                    <div className="mobile-nav-item dropdown-item dropdown-nav-item"><a href={getConfig().LOGOUT_URL} role="menuitem" onClick={(e) => { e.preventDefault(); window.location.href = getConfig().LOGOUT_URL; }}>Sign Out</a></div>
                   </div>
                 </div>
               </div>
@@ -843,7 +843,7 @@ class Header extends Component {
                   </a>
                 </div>
                 <div className="mobile-nav-item dropdown-item dropdown-nav-item mobile-nav-link">
-                  <a href={getConfig().LOGOUT_URL} role="menuitem">
+                  <a href={getConfig().LOGOUT_URL} role="menuitem" onClick={(e) => { e.preventDefault(); window.location.href = getConfig().LOGOUT_URL; }}>
                     Sign Out
                   </a>
                 </div>
