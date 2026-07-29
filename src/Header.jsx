@@ -105,6 +105,7 @@ class Header extends Component {
       const langSelect = document.createElement("select");
       langSelect.id = "langOptions";
       langSelect.className = "myLang";
+      langSelect.setAttribute("notranslate", "");
       langSelect.ariaLabel = "Selected language";
       parentDiv.append(jf);
       parentDiv.append(jqueryScript);
@@ -622,10 +623,6 @@ class Header extends Component {
           $(this).removeAttr("selected");
         }
       })
-  
-      setTimeout(() => {
-        Localize.untranslate($(".myLang").get(0));
-      }, 100);
   
     }
   
