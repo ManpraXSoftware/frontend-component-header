@@ -219,6 +219,9 @@ class Header extends Component {
           }
         }
         
+        if (!isLocalize && darkLang.length === 0) {
+          langSelect.remove(); // only English released → no dropdown
+        }
         this.setState({ languages: lang_dict })
 
         if (selectTag) {
