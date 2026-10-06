@@ -109,6 +109,8 @@ class Header extends Component {
     langSelect.ariaLabel = "Selected language";
     parentDiv.append(jf);
     parentDiv.append(jqueryScript);
+    parentDiv.append(langSelect);
+    langSelect.addEventListener('change', this.handleLangOptionsClick);
     const bodyDiv = document.body;
     if (isLocalize) {
       const localizeInnerText = document.createElement("script");
@@ -117,9 +119,7 @@ class Header extends Component {
       localizeKey.innerText = Localize.initialize({ key: mx_localizekey, rememberLanguage: true, retranslateOnNewPhrases: true});
       parentDiv.append(localizeInnerText);
       parentDiv.append(localizeKey);
-      parentDiv.append(langSelect);
       bodyDiv.append(localizeScript);
-      langSelect.addEventListener('change', this.handleLangOptionsClick);
     } else if (!document.getElementById('a4i-sdk')) {
       const a4iScript = document.createElement('script');
       a4iScript.id = 'a4i-sdk';
@@ -167,6 +167,8 @@ class Header extends Component {
           console.log('Available languages:', data);
         }
       });
+      } else {
+        lang_dict.push({ "name": "English", "code": "en" })
       }
 
       axios.get(getConfig().LMS_BASE_URL + `/mx-user-info/get_user_profile?email=${authenticatedUser.email}`,).then((res) => {
@@ -228,7 +230,7 @@ class Header extends Component {
         for (let i = 0; i < options.length; i++) {
           if (current_lang == options[i].value) {
             options[i].setAttribute("selected", true)
-            Localize.setLanguage(current_lang);
+            if (isLocalize) Localize.setLanguage(current_lang);
             Cookies.set('lang', current_lang, { domain: getConfig().SITE_DOMAIN[0], path: '/', secure: false, sameSite: "Lax" })
 
           }
@@ -640,7 +642,7 @@ class Header extends Component {
 
 
 
-    Localize.setLanguage(setLang);
+    if (window.Localize) Localize.setLanguage(setLang);
     $('#langOptions > option').each(function () {
       if (setLang == $(this).val()) {
         $(this).attr('selected', true);
